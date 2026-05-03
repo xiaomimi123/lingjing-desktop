@@ -1,0 +1,87 @@
+/* ============================================================================
+ * /hermes(Hermes 概览)灵境化简化 v1
+ * 不改 src/views/hermes/HermesDashboard.vue 源码,纯 CSS overlay
+ *
+ * 规则:
+ *   1. Hero 渐变蓝光去掉 → 灰底
+ *   2. 4 个 stat 卡的 inline color icon 统一灰度
+ *   3. 「测试连接」按钮已连接时隐藏(避免冗余)
+ *   4. 模型管理小卡片去渐变,跟全站统一
+ * ============================================================================ */
+
+/* 1. Hero 卡片(连接状态 + 网关信息) ---------------------------------- */
+html .hermes-hero {
+  background: var(--n-card-color) !important;
+  border: 1px solid var(--n-border-color) !important;
+}
+
+/* 2. 4 个 stat 卡的彩色 icon 中性化 ---------------------------------- */
+/* HermesDashboard 直接 inline style 在 div 上设了 background + color,
+   所以要用 attribute selector + !important 强制覆盖 */
+html .hermes-dashboard .stat-card-icon[style] {
+  background: var(--n-action-color, rgba(0, 0, 0, 0.04)) !important;
+  color: var(--n-text-color-3) !important;
+}
+
+:root[data-theme='dark'] html .hermes-dashboard .stat-card-icon[style] {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* stat-card 自己外框统一 */
+html .hermes-dashboard .stat-card {
+  background: var(--n-card-color) !important;
+  border: 1px solid var(--n-border-color) !important;
+  box-shadow: none !important;
+}
+
+/* stat-card 数字突出 */
+html .hermes-dashboard .stat-card-value {
+  color: var(--n-text-color) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* 3. 「测试连接」按钮:已连接时藏掉 ----------------------------------- */
+/* connection-indicator.connected 兄弟里的 button 是测试连接,藏起来减负 */
+html .hermes-dashboard .hermes-hero-details .app-toolbar-btn {
+  /* 连接成功时按钮意义不大,弱化(不直接 display:none,留个 hover 入口) */
+  opacity: 0.6 !important;
+  transition: opacity 0.15s ease !important;
+}
+
+html .hermes-dashboard .hermes-hero-details .app-toolbar-btn:hover {
+  opacity: 1 !important;
+}
+
+/* 4. usage-card 内的趋势图无数据时压缩 ------------------------------- */
+/* 当 token-distribution + trendGeometry 都空时,SVG 内只有 chart-empty,
+   缩短高度 */
+html .hermes-dashboard .chart-empty {
+  padding: 32px 16px !important;
+  font-size: 12.5px !important;
+  color: var(--n-text-color-disabled) !important;
+}
+
+/* 5. 「使用量分析」顶栏的 7 个按钮挤一起 太花 - 设统一 size */
+html .hermes-dashboard .usage-toolbar .n-radio-group {
+  gap: 4px !important;
+}
+
+/* 6. 最近会话表格风格统一 -------------------------------------------- */
+html .hermes-dashboard .recent-sessions {
+  background: var(--n-card-color) !important;
+  border: 1px solid var(--n-border-color) !important;
+}
+
+/* 数据表头淡化 */
+html .hermes-dashboard .n-data-table-thead .n-data-table-th {
+  font-weight: 500 !important;
+  font-size: 12.5px !important;
+  background: transparent !important;
+}
+
+/* 7. 「当前模型」卡跟模型管理页对齐风格 ----------------------------- */
+html .hermes-dashboard .current-model-card {
+  background: var(--n-card-color) !important;
+  border: 1px solid var(--n-border-color) !important;
+  box-shadow: none !important;
+}

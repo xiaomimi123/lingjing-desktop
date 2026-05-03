@@ -1,0 +1,301 @@
+/* ============================================================================
+ * 灵境对话样式覆盖 v3 —— 嵌入式 / ChatGPT / Claude 极简风
+ * 用 html 前缀提高优先级,胜过 Vue scoped CSS (data-v-xxx)
+ * ============================================================================ */
+
+/* 1. 清掉所有工作台技术细节 -------------------------------------------- */
+html :is(.chat-page, .hermes-chat-page) .chat-token-metrics,
+html :is(.chat-page, .hermes-chat-page) .chat-token-chip,
+html :is(.chat-page, .hermes-chat-page) .app-toolbar-btn--refresh,
+html :is(.chat-page, .hermes-chat-page) .chat-grid-side,
+html :is(.chat-page, .hermes-chat-page) .chat-side-card,
+html :is(.chat-page, .hermes-chat-page) .chat-side-collapse-btn,
+html :is(.chat-page, .hermes-chat-page) .chat-quick-footnote,
+html :is(.chat-page, .hermes-chat-page) .chat-debug-toggle,
+html :is(.chat-page, .hermes-chat-page) .chat-bubble-meta,           /* 用户/助手/模型/时间戳 */
+html :is(.chat-page, .hermes-chat-page) .chat-content-copy-btn,      /* hover 复制 */
+html :is(.chat-page, .hermes-chat-page) button[class*="expand-detail"],
+html :is(.chat-page, .hermes-chat-page) .chat-input-extra,
+html :is(.chat-page, .hermes-chat-page) button.is-clear,
+html :is(.chat-page, .hermes-chat-page) button[class*="clear-input"] {
+  display: none !important;
+}
+
+/* 隐藏标题、顶部 toolbar */
+html :is(.chat-page, .hermes-chat-page) .chat-root-card > .n-card-header {
+  display: none !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-root-card > .n-card__content > .app-toolbar:first-child {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-root-card {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-root-card > .n-card__content {
+  padding: 0 !important;
+}
+
+/* page-container 默认没 height,导致 chat-page 100% 失效;chat 路由下补一下。
+ * `:has()` 在 Electron 36 (Chromium 130+) 支持;万一不支持也无伤大雅,
+ * 后续兜底用 vh 计算。 */
+html .page-container:has(.chat-page),
+html .page-container:has(.hermes-chat-page) {
+  height: 100% !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) {
+  padding: 0 !important;
+  /* 用 vh 直接绑视区高度,绕过 height:100% 链路问题 */
+  height: calc(100vh - var(--header-height, 48px)) !important;
+  max-height: calc(100vh - var(--header-height, 48px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* 2. 让对话区域居中 + 占满 -------------------------------------------- */
+html :is(.chat-page, .hermes-chat-page) .chat-grid {
+  display: block !important;
+  flex: 1 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-grid > .n-grid-item:not(.chat-grid-side) {
+  width: 100% !important;
+  max-width: 880px !important;
+  margin: 0 auto !important;
+  grid-column: unset !important;
+  height: 100% !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-grid-main {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* 3. 消息气泡:灰度,无边框 -------------------------------------------- */
+html :is(.chat-page, .hermes-chat-page) .chat-bubble,
+html :is(.chat-page, .hermes-chat-page) .chat-bubble.is-user,
+html :is(.chat-page, .hermes-chat-page) .chat-bubble.is-assistant,
+html :is(.chat-page, .hermes-chat-page) .chat-bubble.is-tool,
+html :is(.chat-page, .hermes-chat-page) .chat-bubble.is-system {
+  border: none !important;
+  outline: none !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+}
+
+/* 用户消息:右对齐,深灰填充(像 iMessage / 豆包) */
+html :is(.chat-page, .hermes-chat-page) .chat-bubble.is-user {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  margin-bottom: 18px !important;
+  padding: 10px 14px !important;
+  width: fit-content !important;
+  max-width: min(560px, 80%) !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: var(--n-text-color) !important;
+}
+
+/* 助手消息:左对齐,纯文字流(像 ChatGPT,无气泡背景) */
+html :is(.chat-page, .hermes-chat-page) .chat-bubble.is-assistant {
+  margin-right: auto !important;
+  margin-left: 0 !important;
+  margin-bottom: 18px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: var(--n-text-color) !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* 工具调用:小巧虚线框 */
+html :is(.chat-page, .hermes-chat-page) .chat-bubble.is-tool {
+  margin-right: auto !important;
+  margin-bottom: 12px !important;
+  padding: 8px 12px !important;
+  background: transparent !important;
+  border: 1px dashed var(--n-divider-color) !important;
+  font-size: 12.5px !important;
+  color: var(--n-text-color-3) !important;
+  border-radius: 8px !important;
+  max-width: min(480px, 70%) !important;
+}
+
+/* 系统消息(Compaction 等):居中淡灰小字,完全无边框 */
+html :is(.chat-page, .hermes-chat-page) .chat-bubble.is-system {
+  margin: 4px auto 12px !important;
+  padding: 4px 12px !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 11.5px !important;
+  color: var(--n-text-color-disabled) !important;
+  text-align: center !important;
+  max-width: 600px !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase;
+}
+
+/* 4. 暗色主题适配 ----------------------------------------------------- */
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .chat-bubble.is-user {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 5. Markdown 内容样式 ------------------------------------------------ */
+html :is(.chat-page, .hermes-chat-page) .chat-markdown {
+  font-size: 14px !important;
+  line-height: 1.7 !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-markdown :deep(p),
+html :is(.chat-page, .hermes-chat-page) .chat-markdown p {
+  margin: 0 0 8px !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-markdown :deep(p:last-child),
+html :is(.chat-page, .hermes-chat-page) .chat-markdown p:last-child {
+  margin-bottom: 0 !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-markdown :deep(pre),
+html :is(.chat-page, .hermes-chat-page) .chat-markdown pre {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid var(--n-divider-color) !important;
+  border-radius: 8px !important;
+  padding: 12px 14px !important;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace !important;
+  font-size: 12.5px !important;
+}
+
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .chat-markdown :deep(pre),
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .chat-markdown pre {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-markdown :deep(p code),
+html :is(.chat-page, .hermes-chat-page) .chat-markdown :deep(li code),
+html :is(.chat-page, .hermes-chat-page) .chat-markdown p code,
+html :is(.chat-page, .hermes-chat-page) .chat-markdown li code {
+  background: rgba(0, 0, 0, 0.06) !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace !important;
+  font-size: 0.92em !important;
+}
+
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .chat-markdown :deep(p code),
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .chat-markdown :deep(li code),
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .chat-markdown p code,
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .chat-markdown li code {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 6. 隐藏底部状态条 ---------------------------------------------------- */
+/* 输入框下面的"空闲" / "等待响应..." pill — 视觉太花,只在 sending 时短暂显示就行 */
+html :is(.chat-page, .hermes-chat-page) [class*="agent-status"],
+html :is(.chat-page, .hermes-chat-page) [class*="phase-tag"],
+html :is(.chat-page, .hermes-chat-page) .chat-input-status-tag {
+  display: none !important;
+}
+
+/* "当前发送到: main | Enter 发送, Shift+Enter 换行..." 这种技术 hint */
+html :is(.chat-page, .hermes-chat-page) .chat-input-hint,
+html :is(.chat-page, .hermes-chat-page) [class*="send-hint"] {
+  display: none !important;
+}
+
+/* 7. 工具结果绿色 pill —— 改成中性灰 -------------------------------- */
+html :is(.chat-page, .hermes-chat-page) .n-tag--success-type,
+html :is(.chat-page, .hermes-chat-page) .n-tag--info-type,
+html :is(.chat-page, .hermes-chat-page) .chat-tool-tag {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--n-text-color-3) !important;
+  border: 1px solid var(--n-divider-color) !important;
+}
+
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .n-tag--success-type,
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .n-tag--info-type {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* 8. 输入区域美化 ------------------------------------------------------ */
+html :is(.chat-page, .hermes-chat-page) .chat-input-card,
+html :is(.chat-page, .hermes-chat-page) .chat-input-area,
+html :is(.chat-page, .hermes-chat-page) .chat-composer {
+  border-radius: 12px !important;
+  border: 1px solid var(--n-border-color) !important;
+  background: var(--n-card-color) !important;
+  padding: 10px 12px !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) textarea.n-input__textarea-el {
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+}
+
+/* 9. v3 嵌入式风格 —— 隐藏对话页内残余的"工作台"装饰 ------------------ */
+/* 9.1 .chat-transcript-card 顶部那个 NSpace 是「会话标签 / 已同步 时间 / 用户/助手统计」
+       —— 删掉,ChatGPT 风格不要这些 */
+html :is(.chat-page, .hermes-chat-page) .chat-transcript-card > .n-card__content > .n-space:first-child {
+  display: none !important;
+}
+
+/* 9.2 transcript 的边框 / 渐变背景去掉,纯文字流 */
+html :is(.chat-page, .hermes-chat-page) .chat-transcript {
+  border: none !important;
+  background: transparent !important;
+  padding: 14px 24px 28px !important;
+}
+
+/* 9.3 整张 transcript-card 不要外圈卡片感,跟页面同色 */
+html :is(.chat-page, .hermes-chat-page) .chat-transcript-card {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html :is(.chat-page, .hermes-chat-page) .chat-transcript-card > .n-card__content {
+  padding: 0 !important;
+}
+
+/* 9.4 chat-main-column 撑满高度,主区 flex 列布局 */
+html :is(.chat-page, .hermes-chat-page) .chat-grid-main,
+html :is(.chat-page, .hermes-chat-page) .chat-main-column {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* 9.5 输入区域容器 sticky 底部,统一加点呼吸感 */
+html :is(.chat-page, .hermes-chat-page) .chat-compose-card {
+  flex-shrink: 0 !important;
+  border: 1px solid var(--n-border-color) !important;
+  border-radius: 12px !important;
+  margin: 0 24px 18px !important;
+  padding: 8px 10px !important;
+  background: var(--n-card-color) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+}
+
+:root[data-theme='dark'] html :is(.chat-page, .hermes-chat-page) .chat-compose-card {
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 9.6 输入区底部 "当前发送到 main | Enter 发送..." 提示
+   NText depth=3 渲染成 .n-text--depth-3 / .n-text(默认 mode);两边兜底 */
+html :is(.chat-page, .hermes-chat-page) .chat-compose-card .n-text--depth-3,
+html :is(.chat-page, .hermes-chat-page) .chat-compose-card .n-text[depth="3"],
+html :is(.chat-page, .hermes-chat-page) .chat-compose-card span.n-text {
+  display: none !important;
+}
+
+/* 9.7 v2 已经隐藏 "清空输入"(button.is-clear / [class*="clear-input"]) */

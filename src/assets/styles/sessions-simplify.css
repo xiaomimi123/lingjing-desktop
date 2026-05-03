@@ -1,0 +1,143 @@
+/* ============================================================================
+ * 灵境历史(/sessions)页样式覆盖 v1 —— 极简风
+ * 用 html 前缀提高优先级,胜过 Vue scoped CSS (data-v-xxx)
+ *
+ * 不改 SessionsPage.vue(原生组件)。改造原则:
+ *   1. 删工程提示 banner(普通用户不需要)
+ *   2. 4 个彩色 stat 卡 → 灰度紧凑数字
+ *   3. 两个 NCard 合一(去外框 + 间距压缩)
+ *   4. 筛选条变小变低调
+ *   5. 操作按钮去鲜艳填充,改成中性 ghost
+ *   6. 单页(数据量 ≤ 1)隐藏分页器
+ * ============================================================================ */
+
+/* 1. 删 hint banner ---------------------------------------------------- */
+html .sessions-page .sessions-hero .n-alert {
+  display: none !important;
+}
+
+/* 2. 两个 NCard 视觉合一 ---------------------------------------------- */
+html .sessions-page .sessions-hero,
+html .sessions-page .sessions-card {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html .sessions-page .sessions-hero > .n-card__content {
+  padding: 0 !important;
+}
+
+html .sessions-page .sessions-card {
+  margin-top: 4px !important;
+}
+
+html .sessions-page .sessions-card > .n-card-header {
+  padding: 8px 0 4px !important;
+  font-size: 14px !important;
+}
+
+html .sessions-page .sessions-card > .n-card__content {
+  padding: 0 !important;
+}
+
+/* 3. Hero 的 title 变更克制 ------------------------------------------ */
+html .sessions-page .sessions-hero-title {
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.2px !important;
+}
+
+/* 4. 4 个统计卡 → 灰度 + 紧凑 ---------------------------------------- */
+html .sessions-page .sessions-metric-card {
+  background: var(--n-action-color, rgba(0, 0, 0, 0.03)) !important;
+  border: 1px solid var(--n-divider-color) !important;
+  border-radius: 10px !important;
+}
+
+html .sessions-page .sessions-metric-card > .n-card__content {
+  padding: 10px 14px !important;
+}
+
+html .sessions-page .sessions-metric-value {
+  font-size: 22px !important;
+  font-weight: 500 !important;
+  font-variant-numeric: tabular-nums !important;
+  margin-top: 4px !important;
+  color: var(--n-text-color) !important;
+}
+
+/* 把 metric 顶部的图标淡化(本来太抢眼) */
+html .sessions-page .sessions-metric-card .n-icon {
+  color: var(--n-text-color-disabled) !important;
+}
+
+/* 5. 筛选栏:压缩高度,变 secondary 风 -------------------------------- */
+html .sessions-page .sessions-filter-bar {
+  margin-top: 14px !important;
+  gap: 8px !important;
+}
+
+html .sessions-page .sessions-filter-bar .n-input,
+html .sessions-page .sessions-filter-bar .n-select,
+html .sessions-page .sessions-filter-bar .n-button {
+  font-size: 13px !important;
+}
+
+/* 6. 操作列按钮:中性 ghost 风 ---------------------------------------- */
+/* 靠 NButton 的 ::before / ::after 着色,naive 用 CSS var 控制各 type 颜色;
+   直接覆盖 naive 的颜色变量,确保 secondary 填充也变中性 */
+html .sessions-page .sessions-action-btn--new,
+html .sessions-page .sessions-action-btn--delete,
+html .sessions-page .sessions-row-actions .n-button {
+  --n-color: transparent !important;
+  --n-color-hover: var(--n-action-color, rgba(0, 0, 0, 0.04)) !important;
+  --n-color-pressed: var(--n-action-color, rgba(0, 0, 0, 0.06)) !important;
+  --n-color-focus: transparent !important;
+  --n-text-color: var(--n-text-color-2, #555) !important;
+  --n-text-color-hover: var(--n-text-color, #222) !important;
+  --n-text-color-pressed: var(--n-text-color, #222) !important;
+  --n-text-color-focus: var(--n-text-color, #222) !important;
+  --n-border: 1px solid var(--n-border-color) !important;
+  --n-border-hover: 1px solid var(--n-text-color-3) !important;
+  --n-border-pressed: 1px solid var(--n-text-color-3) !important;
+  --n-border-focus: 1px solid var(--n-border-color) !important;
+  font-weight: 400 !important;
+}
+
+/* 删除按钮 hover 时变红色边框 + 红色文字,作为危险动作的轻量提示 */
+html .sessions-page .sessions-action-btn--delete:hover {
+  --n-text-color-hover: #FF3B30 !important;
+  --n-border-hover: 1px solid rgba(255, 59, 48, 0.4) !important;
+}
+
+:root[data-theme='dark'] html .sessions-page .sessions-action-btn--delete:hover {
+  --n-text-color-hover: #FF6359 !important;
+  --n-border-hover: 1px solid rgba(255, 99, 89, 0.5) !important;
+}
+
+/* 7. 表头 padding 压缩 ----------------------------------------------- */
+html .sessions-page .n-data-table-thead .n-data-table-th {
+  font-weight: 500 !important;
+  font-size: 12.5px !important;
+  background: transparent !important;
+  border-bottom: 1px solid var(--n-divider-color) !important;
+}
+
+html .sessions-page .n-data-table-tbody .n-data-table-td {
+  padding: 12px 16px !important;
+}
+
+/* 8. 单页隐藏分页器 -------------------------------------------------- */
+/* Naive UI 的 NPagination 在条目数 <= pageSize 时仍渲染,这里强制 :has() 兜底 */
+html .sessions-page .n-data-table-pagination .n-pagination[data-total="1"],
+html .sessions-page .n-data-table-pagination .n-pagination:has(.n-pagination-item--button[disabled]):not(:has(.n-pagination-item--active + .n-pagination-item:not(.n-pagination-item--button))) {
+  /* fallback:总条目 ≤ pageSize 时分页器只剩单个 active 页,隐藏整个分页栏
+     这条规则不一定每种状态都能命中,实在不行就保留分页符,影响不大 */
+  display: none !important;
+}
+
+/* 更稳的兜底:如果分页器里只有 1 个页码项目,直接隐藏 */
+html .sessions-page .n-data-table-pagination:has(.n-pagination-item--active):not(:has(.n-pagination-item--page:nth-of-type(2))) {
+  display: none !important;
+}
