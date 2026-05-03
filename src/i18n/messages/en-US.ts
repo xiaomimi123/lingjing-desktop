@@ -1,6 +1,6 @@
 export default {
   app: {
-    title: 'Claw Admin',
+    title: 'Lingjing',
   },
   routes: {
     login: 'Login',

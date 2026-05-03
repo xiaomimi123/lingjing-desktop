@@ -170,7 +170,7 @@ function handleCustomUpdate() {
 <template>
   <NSpace :size="8" align="center">
     <a
-      href="https://github.com/itq5/OpenClaw-Admin"
+      href="https://github.com/xiaomimi123/lingjing-desktop"
       target="_blank"
       rel="noopener noreferrer"
       style="display: flex; align-items: center; color: inherit; text-decoration: none;"

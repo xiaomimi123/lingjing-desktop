@@ -110,7 +110,7 @@ async function handleReconfigure() {
     reconfiguring.value = false
   }
 }
-const appTitle = import.meta.env.VITE_APP_TITLE || 'OpenClaw Admin'
+const appTitle = import.meta.env.VITE_APP_TITLE || '灵境'
 const appVersion = import.meta.env.VITE_APP_VERSION || ''
 
 const loading = ref(false)

@@ -1,6 +1,6 @@
 export default {
   app: {
-    title: 'Claw Admin',
+    title: '灵境',
   },
   routes: {
     login: '登录',

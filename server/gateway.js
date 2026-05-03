@@ -129,7 +129,7 @@ export class OpenClawGateway extends EventEmitter {
       maxProtocol: 3,
       client: {
         id: 'cli',
-        displayName: 'OpenClaw Web Backend',
+        displayName: '灵境 Backend',
         version: APP_VERSION,
         platform: process.platform,
         mode: 'cli',

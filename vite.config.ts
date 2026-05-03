@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      'import.meta.env.VITE_APP_TITLE': JSON.stringify(env.VITE_APP_TITLE || 'OpenClaw Web'),
+      'import.meta.env.VITE_APP_TITLE': JSON.stringify(env.VITE_APP_TITLE || '灵境'),
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
     },
   }
