@@ -1,11 +1,16 @@
 import Database from 'better-sqlite3'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { mkdirSync } from 'fs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const dbPath = join(__dirname, '../data/wizard.db')
+// packaged 时 main.js 通过 LINGJING_DB_PATH 环境变量喂真实磁盘路径(userData 下);
+// dev 时回退到仓库 data/wizard.db,行为不变。
+const dbPath = process.env.LINGJING_DB_PATH || join(__dirname, '../data/wizard.db')
+mkdirSync(dirname(dbPath), { recursive: true })
+console.log('[database] dbPath =', dbPath)
 
 const db = new Database(dbPath)
 

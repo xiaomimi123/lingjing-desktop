@@ -15,9 +15,11 @@
     "start": "node --env-file=.env server/index.js",
     "electron": "electron .",
     "electron:dev": "concurrently -k -n \"frontend,electron\" -c \"blue,magenta\" \"vite\" \"wait-on tcp:3001 && electron .\"",
-    "electron:build": "vue-tsc -b && vite build",
+    "electron:build": "vite build",
     "dist:mac": "npm run electron:build && electron-builder --mac",
     "dist:win": "npm run electron:build && electron-builder --win",
+    "dist:win:dir": "npm run electron:build && electron-builder --win --dir",
+    "run:packed": "release/win-unpacked/Lingjing.exe",
     "rebuild:native": "cd node_modules/better-sqlite3 && ../.bin/prebuild-install --runtime=electron --target=36.9.5 --arch=x64",
     "test:e2e": "node --env-file-if-exists=.env.test ./node_modules/.bin/playwright test",
     "test:e2e:headed": "node --env-file-if-exists=.env.test ./node_modules/.bin/playwright test --headed",
@@ -30,16 +32,50 @@
     "directories": {
       "output": "release"
     },
+    "npmRebuild": false,
+    "asar": false,
     "files": [
       "dist/**/*",
       "electron/**/*",
       "server/**/*",
-      "node_modules/**/*",
-      "!node_modules/**/test/**",
-      "!node_modules/**/*.md"
+      {
+        "from": "node_modules",
+        "to": "node_modules",
+        "filter": [
+          "**/*",
+          "!**/test/**",
+          "!**/tests/**",
+          "!**/*.md",
+          "!**/*.markdown",
+          "!**/.bin/**",
+          "!**/CHANGELOG*",
+          "!**/HISTORY*"
+        ]
+      }
     ],
     "extraResources": [
-      "data/**/*"
+      "data/**/*",
+      {
+        "from": "resources/openclaw",
+        "to": "openclaw",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/hermes",
+        "to": "hermes",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/python",
+        "to": "python",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "mac": {
       "category": "public.app-category.productivity",
@@ -66,18 +102,29 @@
       "title": "灵境"
     },
     "win": {
+      "executableName": "Lingjing",
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
-      ],
-      "artifactName": "灵境-${version}-${arch}.${ext}"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "灵境"
+      "shortcutName": "灵境",
+      "artifactName": "Lingjing-Setup-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "xiaomimi123",
+      "repo": "lingjing-desktop",
+      "releaseType": "release"
     }
   },
   "dependencies": {
@@ -99,6 +146,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "edge-tts-client": "^1.0.2",
+    "electron-updater": "^6.8.3",
     "express": "^5.2.1",
     "highlight.js": "^11.11.1",
     "js-yaml": "^4.1.1",

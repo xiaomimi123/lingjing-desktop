@@ -1,9 +1,16 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import { routes } from './routes'
 import { useAuthStore } from '@/stores/auth'
 
+// packaged Electron 加载 file://,vue-router 的 history mode 用 pathname 匹配,
+// 但 pathname 在 file:// 下是文件系统路径(如 /D:/cesi/Lingjing/.../index.html),
+// 路由匹配不到 → 全屏黑。改用 hash mode(URL 用 # 后面的部分),file:// 下能正常匹配。
+// dev 跑 http://localhost,继续用 history mode 保持地址栏干净。
+const isFileProtocol =
+  typeof window !== 'undefined' && window.location.protocol === 'file:'
+
 const router = createRouter({
-  history: createWebHistory(),
+  history: isFileProtocol ? createWebHashHistory() : createWebHistory(),
   routes,
 })
 
@@ -20,10 +27,8 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (!authEnabled) {
-    if (to.name === 'Login') {
-      next({ name: 'Dashboard' })
-      return
-    }
+    // 本地 server auth disabled 不代表云端账号 disabled。允许用户去 Login 页登录
+    // 灵境云端(api.aitoken.homes),不要拦截。已登录用户去 Login 由下面 meta.public 分支处理。
     next()
     return
   }

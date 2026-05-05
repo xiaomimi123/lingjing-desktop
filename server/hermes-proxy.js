@@ -99,6 +99,11 @@ let dashboardStatus = {
 
 // 查找 Hermes CLI 路径（支持 Windows 和 Linux）
 function findHermesPath() {
+  // packaged 模式 main.js 通过环境变量喂内嵌 venv 真实路径(userData 下),最高优先
+  if (process.env.LINGJING_HERMES_EXE && fs.existsSync(process.env.LINGJING_HERMES_EXE)) {
+    console.log(`[Hermes] 使用内嵌 venv: ${process.env.LINGJING_HERMES_EXE}`)
+    return process.env.LINGJING_HERMES_EXE
+  }
   const homeDir = process.env.HOME || process.env.USERPROFILE || ''
   const possiblePaths = []
 
@@ -188,8 +193,10 @@ function startDashboard() {
     if (hermesConfig.apiKey) {
       hermesEnv.API_SERVER_KEY = hermesConfig.apiKey
     }
+    // packaged 时 cwd 不能用 __dirname/.. (asar 内不存在);用 hermes 所在目录或 userData
+    const hermesCwd = process.env.LINGJING_USER_DATA || path.join(__dirname, '..')
     dashboardProcess = spawn(hermesPath, ['dashboard', '--port', String(port)], {
-      cwd: path.join(__dirname, '..'),
+      cwd: hermesCwd,
       env: hermesEnv,
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: false,

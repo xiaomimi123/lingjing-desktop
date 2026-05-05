@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>灵境 启动中</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #f5f5f7;
+        color: #1d1d1f;
+        user-select: none;
+      }
+      .wrap {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        -webkit-app-region: drag;
+      }
+      .logo {
+        width: 56px;
+        height: 56px;
+        background: #1d1d1f;
+        color: #fff;
+        font-size: 28px;
+        font-weight: 600;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+      }
+      .title {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 1px;
+      }
+      .stage {
+        font-size: 13px;
+        color: #6e6e73;
+        min-height: 18px;
+        text-align: center;
+        max-width: 360px;
+        line-height: 1.5;
+      }
+      .spinner {
+        width: 26px;
+        height: 26px;
+        border: 2.5px solid rgba(0,0,0,0.08);
+        border-top-color: #1d1d1f;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .hint {
+        position: absolute;
+        bottom: 14px;
+        font-size: 11px;
+        color: #a1a1a6;
+      }
+
+      /* 失败诊断面板(平时隐藏) */
+      .diag {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #fff;
+        flex-direction: column;
+        padding: 24px 28px;
+        gap: 14px;
+        overflow: auto;
+        -webkit-app-region: no-drag;
+      }
+      .diag.show { display: flex; }
+      .diag h2 {
+        margin: 0;
+        font-size: 16px;
+        color: #d70015;
+      }
+      .diag .msg {
+        font-size: 13px;
+        color: #1d1d1f;
+        line-height: 1.5;
+      }
+      .diag pre {
+        background: #f5f5f7;
+        border: 1px solid #e5e5ea;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 11px;
+        font-family: Consolas, "Courier New", monospace;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 240px;
+        overflow: auto;
+        color: #3a3a3c;
+      }
+      .diag .meta {
+        font-size: 11px;
+        color: #6e6e73;
+      }
+      .diag .actions {
+        display: flex;
+        gap: 8px;
+      }
+      .diag button {
+        padding: 6px 12px;
+        font-size: 12px;
+        border: 1px solid #d2d2d7;
+        background: #fff;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .diag button:hover { background: #f5f5f7; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap" id="loading">
+      <div class="logo">灵</div>
+      <div class="title">灵境</div>
+      <div class="spinner"></div>
+      <div class="stage" id="stage">正在准备运行环境...</div>
+    </div>
+    <div class="hint">首次启动需 5–15 秒</div>
+
+    <div class="diag" id="diag">
+      <h2 id="diagTitle">启动失败</h2>
+      <div class="msg" id="diagMsg"></div>
+      <div class="meta">后端日志(末 30 行):</div>
+      <pre id="diagLog"></pre>
+      <div class="meta">关键路径:</div>
+      <pre id="diagPaths"></pre>
+      <div class="meta" id="diagLogPath"></div>
+      <div class="actions">
+        <button id="copyBtn">复制全部诊断信息</button>
+      </div>
+    </div>
+
+    <script>
+      const $stage = document.getElementById('stage')
+      const $loading = document.getElementById('loading')
+      const $diag = document.getElementById('diag')
+      const $diagTitle = document.getElementById('diagTitle')
+      const $diagMsg = document.getElementById('diagMsg')
+      const $diagLog = document.getElementById('diagLog')
+      const $diagPaths = document.getElementById('diagPaths')
+      const $diagLogPath = document.getElementById('diagLogPath')
+      const $copyBtn = document.getElementById('copyBtn')
+
+      let lastDiag = null
+
+      if (window.lingjing && typeof window.lingjing.onLoadingStage === 'function') {
+        window.lingjing.onLoadingStage((text) => {
+          if (typeof text === 'string' && text) $stage.textContent = text
+        })
+      }
+
+      if (window.lingjing && typeof window.lingjing.onLoadingDiagnostic === 'function') {
+        window.lingjing.onLoadingDiagnostic((payload) => {
+          if (!payload) return
+          lastDiag = payload
+          $loading.style.display = 'none'
+          $diag.classList.add('show')
+          $diagTitle.textContent = payload.stage || '启动失败'
+          $diagMsg.textContent = payload.message || ''
+          $diagLog.textContent = payload.logTail || '(无日志输出)'
+          $diagPaths.textContent = JSON.stringify(payload.paths || {}, null, 2)
+          $diagLogPath.textContent = '完整日志: ' + (payload.logPath || '?')
+        })
+      }
+
+      $copyBtn.addEventListener('click', () => {
+        if (!lastDiag) return
+        const text = [
+          '== 灵境启动诊断 ==',
+          '阶段: ' + (lastDiag.stage || ''),
+          '错误: ' + (lastDiag.message || ''),
+          '',
+          '-- backend.log 末 30 行 --',
+          lastDiag.logTail || '(空)',
+          '',
+          '-- 关键路径 --',
+          JSON.stringify(lastDiag.paths || {}, null, 2),
+          '',
+          '完整日志路径: ' + (lastDiag.logPath || ''),
+        ].join('\n')
+        navigator.clipboard?.writeText(text)
+        $copyBtn.textContent = '已复制 ✓'
+        setTimeout(() => ($copyBtn.textContent = '复制全部诊断信息'), 1500)
+      })
+    </script>
+  </body>
+</html>

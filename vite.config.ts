@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
   const frontendPort = env.DEV_PORT || '3001'
   
   return {
+    // packaged Electron 加载 file://app.asar/dist/index.html,base='/' 会把资源解析成
+    // file:///assets/xxx 直接 404 → 白屏。改成 './' 让 <script>/<link> 用相对路径。
+    base: './',
     plugins: [vue()],
     resolve: {
       alias: {

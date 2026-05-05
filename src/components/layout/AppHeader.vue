@@ -46,6 +46,13 @@ async function handleLogout() {
   await authStore.logout()
   router.push({ name: 'Login' })
 }
+
+// 未登录状态点击 → 跳登录页;已登录点击不动作(状态指示性元素)
+function handleCloudStatusClick() {
+  if (!authStore.isAuthenticated) {
+    router.push({ name: 'Login' })
+  }
+}
 </script>
 
 <template>
@@ -55,7 +62,12 @@ async function handleLogout() {
     </div>
 
     <NSpace :size="10" align="center" class="header-right">
-      <div class="cloud-status">
+      <div
+        class="cloud-status"
+        :class="{ clickable: !authStore.isAuthenticated }"
+        :title="!authStore.isAuthenticated ? '点击登录灵境云端账号' : ''"
+        @click="handleCloudStatusClick"
+      >
         <span class="cloud-dot" :style="{ background: cloudStatus.dot }" />
         <span class="cloud-label" :style="{ color: cloudStatus.color }">
           {{ cloudStatus.text }}
@@ -123,6 +135,16 @@ async function handleLogout() {
   background: var(--n-action-color, rgba(0, 0, 0, 0.04));
   font-size: 12px;
   user-select: none;
+  transition: background 0.15s ease;
+}
+.cloud-status.clickable {
+  cursor: pointer;
+}
+.cloud-status.clickable:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+:root[data-theme='dark'] .cloud-status.clickable:hover {
+  background: rgba(255, 255, 255, 0.10);
 }
 
 .cloud-dot {

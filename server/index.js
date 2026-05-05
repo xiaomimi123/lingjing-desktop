@@ -22,41 +22,33 @@ const __dirname = dirname(__filename)
 const envPath = join(__dirname, '../.env')
 
 function loadEnvConfig() {
-  if (!existsSync(envPath)) {
-    return {
-      PORT: 3001,
-      OPENCLAW_WS_URL: 'ws://localhost:18789',
-      OPENCLAW_AUTH_TOKEN: '',
-      OPENCLAW_AUTH_PASSWORD: '',
-      DEV_FRONTEND_URL: 'http://localhost:3000',
-      AUTH_USERNAME: '',
-      AUTH_PASSWORD: '',
-      MEDIA_DIR: '',
-      LOG_LEVEL: 'INFO',
-      HERMES_WEB_URL: '',
-      HERMES_API_URL: '',
-      HERMES_API_KEY: '',
-      HERMES_CLI_PATH: '',
-      HERMES_HOME: '',
+  // 三层 fallback:process.env(主进程注入) > .env 文件 > 默认值。
+  // packaged 时 .env 不存在(asar 内读不出)、main.js 通过 process.env 喂值;
+  // dev 时 npm run 用 --env-file=.env 读 .env 进 process.env,parsed 仅作兜底
+  let parsed = {}
+  if (existsSync(envPath)) {
+    try {
+      parsed = parse(readFileSync(envPath, 'utf-8'))
+    } catch {
+      // ignore
     }
   }
-  const content = readFileSync(envPath, 'utf-8')
-  const parsed = parse(content)
+  const pick = (key, fallback) => process.env[key] || parsed[key] || fallback
   return {
-    PORT: parsed.PORT || 3001,
-    OPENCLAW_WS_URL: parsed.OPENCLAW_WS_URL || 'ws://localhost:18789',
-    OPENCLAW_AUTH_TOKEN: parsed.OPENCLAW_AUTH_TOKEN || '',
-    OPENCLAW_AUTH_PASSWORD: parsed.OPENCLAW_AUTH_PASSWORD || '',
-    DEV_FRONTEND_URL: parsed.DEV_FRONTEND_URL || 'http://localhost:3000',
-    AUTH_USERNAME: parsed.AUTH_USERNAME || '',
-    AUTH_PASSWORD: parsed.AUTH_PASSWORD || '',
-    MEDIA_DIR: parsed.MEDIA_DIR || '',
-    LOG_LEVEL: parsed.LOG_LEVEL || 'INFO',
-    HERMES_WEB_URL: parsed.HERMES_WEB_URL || '',
-    HERMES_API_URL: parsed.HERMES_API_URL || '',
-    HERMES_API_KEY: parsed.HERMES_API_KEY || '',
-    HERMES_CLI_PATH: parsed.HERMES_CLI_PATH || '',
-    HERMES_HOME: parsed.HERMES_HOME || '',
+    PORT: pick('PORT', 3001),
+    OPENCLAW_WS_URL: pick('OPENCLAW_WS_URL', 'ws://localhost:18789'),
+    OPENCLAW_AUTH_TOKEN: pick('OPENCLAW_AUTH_TOKEN', ''),
+    OPENCLAW_AUTH_PASSWORD: pick('OPENCLAW_AUTH_PASSWORD', ''),
+    DEV_FRONTEND_URL: pick('DEV_FRONTEND_URL', 'http://localhost:3000'),
+    AUTH_USERNAME: pick('AUTH_USERNAME', ''),
+    AUTH_PASSWORD: pick('AUTH_PASSWORD', ''),
+    MEDIA_DIR: pick('MEDIA_DIR', ''),
+    LOG_LEVEL: pick('LOG_LEVEL', 'INFO'),
+    HERMES_WEB_URL: pick('HERMES_WEB_URL', ''),
+    HERMES_API_URL: pick('HERMES_API_URL', ''),
+    HERMES_API_KEY: pick('HERMES_API_KEY', ''),
+    HERMES_CLI_PATH: pick('HERMES_CLI_PATH', ''),
+    HERMES_HOME: pick('HERMES_HOME', ''),
   }
 }
 

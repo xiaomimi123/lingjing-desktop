@@ -48,4 +48,37 @@ contextBridge.exposeInMainWorld('lingjing', {
   skillsSearch: (params) => ipcRenderer.invoke('lingjing:skills-search', params),
   skillsInstall: (params) => ipcRenderer.invoke('lingjing:skills-install', params),
   skillsInfo: (params) => ipcRenderer.invoke('lingjing:skills-info', params),
+  /**
+   * 自动更新(electron-updater + GitHub Releases):
+   *   checkForUpdate 立刻查最新版返回 { hasUpdate, currentVersion, latestVersion }
+   *   downloadUpdate 触发下载,进度通过 onUpdateEvent 推
+   *   installUpdate  下载完了重启安装
+   *   onUpdateEvent  渲染端订阅 'available'|'progress'|'downloaded'|'error'
+   */
+  checkForUpdate: () => ipcRenderer.invoke('lingjing:check-for-update'),
+  downloadUpdate: () => ipcRenderer.invoke('lingjing:download-update'),
+  installUpdate: () => ipcRenderer.invoke('lingjing:install-update'),
+  onUpdateEvent: (callback) => {
+    const handler = (_event, evt) => callback(evt)
+    ipcRenderer.on('lingjing:update-event', handler)
+    return () => ipcRenderer.removeListener('lingjing:update-event', handler)
+  },
+  appVersion: () => ipcRenderer.invoke('lingjing:app-version'),
+  /**
+   * 加载动画窗口:监听主进程推送的启动阶段文案(如"正在解压本地 AI 运行时...")。
+   * 仅 loading.html 用,渲染端订阅后会拿到字符串文本。
+   */
+  onLoadingStage: (callback) => {
+    const handler = (_event, text) => callback(text)
+    ipcRenderer.on('lingjing:loading-stage', handler)
+    return () => ipcRenderer.removeListener('lingjing:loading-stage', handler)
+  },
+  /**
+   * 启动失败诊断:接收 { stage, message, logTail, logPath, paths } 显示给用户。
+   */
+  onLoadingDiagnostic: (callback) => {
+    const handler = (_event, payload) => callback(payload)
+    ipcRenderer.on('lingjing:loading-diagnostic', handler)
+    return () => ipcRenderer.removeListener('lingjing:loading-diagnostic', handler)
+  },
 })

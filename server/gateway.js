@@ -4,9 +4,19 @@ import { randomUUID } from 'crypto'
 import EventEmitter from 'events'
 import { createHash, generateKeyPairSync, sign } from 'crypto'
 
-const APP_VERSION = JSON.parse(
-  readFileSync(new URL('../package.json', import.meta.url), 'utf-8'),
-).version || ''
+// packaged 时 main.js 通过 LINGJING_APP_VERSION 环境变量注入(server 在
+// app.asar.unpacked 下,ELECTRON_RUN_AS_NODE 不认 asar,读 ../package.json 会 ENOENT);
+// dev 时 fallback 到读仓库根 package.json。两边都失败兜底空字符串。
+let APP_VERSION = process.env.LINGJING_APP_VERSION || ''
+if (!APP_VERSION) {
+  try {
+    APP_VERSION = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf-8'),
+    ).version || ''
+  } catch {
+    APP_VERSION = ''
+  }
+}
 
 export class OpenClawGateway extends EventEmitter {
   constructor(url, authToken, authPassword, logLevel = 'INFO') {

@@ -13,3 +13,8 @@ data/wizard.db-shm
 data/wizard.db-wal
 .trae/playwright/.auth/
 playwright/.auth/
+
+# 内嵌依赖目录:OpenClaw npm 包 / Hermes venv 等,几百 MB 不入仓库,
+# electron-builder 打包时直接从本地 resources/ 读取并打进 .exe。
+# 开发者从源码起步时需自行准备(README 会说明)。
+resources/
