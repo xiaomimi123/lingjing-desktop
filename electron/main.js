@@ -110,6 +110,7 @@ async function startBackend() {
 
   backendProcess = spawn(nodeBin, [serverScript], {
     cwd: projectRoot,
+    windowsHide: true,
     env: {
       ...process.env,
       ...extraEnv,
@@ -265,6 +266,8 @@ async function ensureOpenClawRunning() {
       detached: true,
       stdio: 'ignore',
       shell: false,
+      // Win 关键:隐藏 daemon 的 console 窗口,不让用户看到额外的终端
+      windowsHide: true,
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
@@ -283,16 +286,52 @@ async function ensureOpenClawRunning() {
     return { status: 'error', message: String(err?.message || err) }
   }
 
-  // 轮询 18789 最多 75s。OpenClaw 自己 startup-grace=60s,加上插件加载、
-  // 国内网络可能慢,留 75s 余量,只在第一次启动等这么久,后续 daemon 已 LISTENING 立刻返回。
-  logMain('[main] 等 18789 就绪 (最多 75s)...')
+  // 轮询 18789 最多 30s(A+B 混合方案:loading 页只阻塞 30s,剩下让用户进 app
+  // 在聊天发送区看「网关启动中」状态条;daemon 起来后状态条自动消失)。
+  logMain('[main] 等 18789 就绪 (最多 30s)...')
   try {
-    await pingTcp('127.0.0.1', 18789, { timeoutMs: 75000, intervalMs: 500 })
+    await pingTcp('127.0.0.1', 18789, { timeoutMs: 30000, intervalMs: 500 })
     logMain('[main] OpenClaw Gateway 起来了 ✓')
+    // OpenClaw 在 Win 上把 daemon 注册成 Scheduled Task,触发时默认弹 console 窗口。
+    // 异步把 Task 的 Hidden 属性设 true,下次启动不再弹(本次已经弹了的关不了)。
+    setOpenClawTaskHidden()
     return { status: 'started', port: 18789 }
   } catch {
-    logMain('[main] 18789 75s 还没就绪,前端可点重试或继续等')
+    logMain('[main] 18789 30s 还没就绪,放用户进 app,继续后台连接')
+    setOpenClawTaskHidden()
     return { status: 'started-but-not-listening', message: '启动命令成功,但 18789 没就绪' }
+  }
+}
+
+/**
+ * 把 OpenClaw 注册的 Windows Scheduled Task 改成 Hidden=true。
+ * 触发时仍然启动 daemon,但不再弹 console 窗口(下次启动开始生效)。
+ * 静默执行,失败不阻塞。
+ */
+function setOpenClawTaskHidden() {
+  if (!isWin) return
+  const ps = `
+    $names = @('OpenClaw Gateway','openclaw-gateway','OpenClaw_Gateway','openclaw');
+    foreach ($n in $names) {
+      try {
+        $t = Get-ScheduledTask -TaskName $n -ErrorAction SilentlyContinue;
+        if ($t -and $t.Settings.Hidden -ne $true) {
+          $t.Settings.Hidden = $true;
+          Set-ScheduledTask -InputObject $t -ErrorAction SilentlyContinue | Out-Null;
+        }
+      } catch {}
+    }
+  `.trim()
+  try {
+    const proc = spawn('powershell', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    })
+    proc.unref()
+    logMain('[main] 异步设置 OpenClaw Scheduled Task Hidden=true (下次启动生效)')
+  } catch (e) {
+    logMain('[main] setOpenClawTaskHidden 失败(非致命): ' + (e?.message || e))
   }
 }
 
@@ -433,9 +472,18 @@ function createMainWindow() {
     height: 700,
     minWidth: 1024,
     minHeight: 620,
+    // sidebar 自然高度 ≈ 700px,锁死窗口高度避免拉到底部出现空白
+    maxHeight: 700,
+    maximizable: false,
     show: false,
     backgroundColor: '#FFFFFF',
-    ...(isMac ? { titleBarStyle: 'hiddenInset' } : { frame: true }),
+    ...(isMac
+      ? { titleBarStyle: 'hiddenInset' }
+      : {
+          // Win:完全无 OS 标题栏(frame:false),前端自画 WindowControls 组件
+          // 颜色跟随当前页面主题(浅色/深色/Login 米色/Dashboard 白色等)永不色差
+          frame: false,
+        }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -507,7 +555,13 @@ function runCommand(cmd, args, opts = {}) {
     useShell = false
   }
   return new Promise((resolve) => {
-    const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], shell: useShell, ...opts, env: childEnv })
+    const proc = spawn(cmd, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: useShell,
+      windowsHide: true,
+      ...opts,
+      env: childEnv,
+    })
     let stdout = ''
     let stderr = ''
     proc.stdout?.on('data', (d) => (stdout += d.toString()))
@@ -904,6 +958,27 @@ ipcMain.handle('lingjing:install-update', () => {
 })
 
 ipcMain.handle('lingjing:app-version', () => app.getVersion())
+
+// ============================================================================
+// 窗口控制(Win frame:false 自画按钮 / mac 走原生 traffic light)
+// ============================================================================
+ipcMain.handle('lingjing:window-minimize', () => {
+  mainWindow?.minimize()
+})
+ipcMain.handle('lingjing:window-toggle-maximize', () => {
+  if (!mainWindow) return false
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize()
+    return false
+  } else {
+    mainWindow.maximize()
+    return true
+  }
+})
+ipcMain.handle('lingjing:window-close', () => {
+  mainWindow?.close()
+})
+ipcMain.handle('lingjing:window-is-maximized', () => mainWindow?.isMaximized() ?? false)
 
 function buildAppMenu() {
   // Win 上隐藏顶部"编辑/视图/窗口/帮助"系统菜单条 —— 大部分用户用不到,

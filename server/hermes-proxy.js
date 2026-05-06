@@ -201,6 +201,7 @@ function startDashboard() {
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: false,
       shell: process.platform === 'win32', // Windows 需要 shell
+      windowsHide: true, // Win 隐藏 cmd.exe console 窗口
     })
 
     dashboardProcess.on('error', (err) => {

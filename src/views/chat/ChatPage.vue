@@ -36,6 +36,7 @@ import { renderSimpleMarkdown } from '@/utils/markdown'
 import { useEdgeTTS } from '@/composables/useEdgeTTS'
 import { useTTSSettings } from '@/composables/useTTSSettings'
 import type { AgentInstance, ChatMessage, ChatMessageContent, SessionsUsageSession, Skill } from '@/api/types'
+import { ConnectionState } from '@/api/types'
 
 const message = useMessage()
 const route = useRoute()
@@ -872,6 +873,13 @@ const agentBusy = computed(() => {
     phase === 'aborting'
   )
 })
+
+// 网关是否就绪可以发消息(server WS 真的连上 OpenClaw daemon)
+const gatewayReady = computed(() => wsStore.state === ConnectionState.CONNECTED)
+const gatewayConnecting = computed(() =>
+  wsStore.state === ConnectionState.CONNECTING ||
+  wsStore.state === ConnectionState.RECONNECTING
+)
 
 const agentBusyToolName = computed(() => {
   if (!agentBusy.value) return ''
@@ -3329,6 +3337,23 @@ async function handleSend() {
                   </NSpace>
                 </div>
 
+                <!-- 网关未就绪:发送区上方显示状态条(B 方案核心) -->
+                <div v-if="!gatewayReady" class="gateway-status-bar" :class="{ failed: !gatewayConnecting }">
+                  <span v-if="gatewayConnecting" class="dot dot-pulse" />
+                  <span v-else class="dot dot-fail" />
+                  <span class="gw-text">
+                    {{ gatewayConnecting ? 'OpenClaw 网关启动中,请稍候...' : 'OpenClaw 网关未连接' }}
+                  </span>
+                  <button
+                    v-if="!gatewayConnecting"
+                    type="button"
+                    class="gw-retry"
+                    @click="() => wsStore.reconnect?.()"
+                  >
+                    重试连接
+                  </button>
+                </div>
+
                 <NSpace justify="space-between" align="center">
                   <NText depth="3" style="font-size: 12px;">
                     {{ t('pages.chat.input.sendHint', { key: normalizedSessionKey }) }}
@@ -3349,7 +3374,13 @@ async function handleSend() {
                       <template #icon><NIcon :component="StopCircleOutline" /></template>
                       {{ t('pages.chat.actions.stop') }}
                     </NButton>
-                    <NButton size="small" type="primary" :loading="agentBusy" :disabled="agentBusy" @click="handleSend">
+                    <NButton
+                      size="small"
+                      type="primary"
+                      :loading="agentBusy"
+                      :disabled="agentBusy || !gatewayReady"
+                      @click="handleSend"
+                    >
                       <template #icon><NIcon :component="SendOutline" /></template>
                       {{ t('pages.chat.actions.send') }}
                     </NButton>
@@ -3361,7 +3392,7 @@ async function handleSend() {
         </NGridItem>
       </NGrid>
 
-      <NAlert v-if="chatStore.lastError" type="error" :show-icon="true" style="margin-top: 12px; border-radius: var(--radius);">
+      <NAlert v-if="chatStore.lastError && gatewayReady" type="error" :show-icon="true" style="margin-top: 12px; border-radius: var(--radius);">
         {{ chatStore.lastError }}
       </NAlert>
     </NCard>
@@ -3417,6 +3448,52 @@ async function handleSend() {
 <style scoped>
 .chat-page {
   min-height: 0;
+}
+
+/* 网关启动中 / 失败状态条(B 方案) */
+.gateway-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: rgba(200, 85, 61, 0.06);
+  border: 1px solid rgba(200, 85, 61, 0.18);
+  font-size: 12.5px;
+  color: #c8553d;
+}
+.gateway-status-bar:not(.failed) {
+  background: rgba(255, 204, 0, 0.08);
+  border-color: rgba(230, 180, 0, 0.25);
+  color: #b88200;
+}
+.gateway-status-bar .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.gateway-status-bar .dot-pulse {
+  background: #e6b400;
+  animation: gw-pulse 1.4s ease-in-out infinite;
+}
+.gateway-status-bar .dot-fail { background: #c8553d; }
+.gateway-status-bar .gw-text { flex: 1; letter-spacing: 0.04em; }
+.gateway-status-bar .gw-retry {
+  background: none;
+  border: 1px solid currentColor;
+  color: inherit;
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.gateway-status-bar .gw-retry:hover { background: rgba(200, 85, 61, 0.08); }
+@keyframes gw-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
 }
 
 /* 桌面端：让聊天区尽量占满可用高度，提升 transcript 可视面积 */

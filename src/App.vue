@@ -15,6 +15,7 @@ import { useI18n } from "vue-i18n";
 import { useTheme } from "@/composables/useTheme";
 import { useLingjingTheme } from "@/composables/useLingjingTheme";
 import { useLocaleStore } from "@/stores/locale";
+import WindowControls from "@/components/layout/WindowControls.vue";
 
 const { theme } = useTheme();
 const { themeOverrides } = useLingjingTheme();
@@ -78,5 +79,7 @@ watch(
         </NDialogProvider>
       </NMessageProvider>
     </NNotificationProvider>
+    <!-- Win 平台自画窗口控制按钮(永远在右上角,跟随主题色) -->
+    <WindowControls />
   </NConfigProvider>
 </template>

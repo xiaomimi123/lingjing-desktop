@@ -81,4 +81,13 @@ contextBridge.exposeInMainWorld('lingjing', {
     ipcRenderer.on('lingjing:loading-diagnostic', handler)
     return () => ipcRenderer.removeListener('lingjing:loading-diagnostic', handler)
   },
+  /**
+   * 窗口控制 — Win frame:false 时前端自画三个按钮调用
+   */
+  window: {
+    minimize: () => ipcRenderer.invoke('lingjing:window-minimize'),
+    toggleMaximize: () => ipcRenderer.invoke('lingjing:window-toggle-maximize'),
+    close: () => ipcRenderer.invoke('lingjing:window-close'),
+    isMaximized: () => ipcRenderer.invoke('lingjing:window-is-maximized'),
+  },
 })

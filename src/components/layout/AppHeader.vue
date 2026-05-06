@@ -108,6 +108,17 @@ function handleCloudStatusClick() {
   justify-content: space-between;
   width: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+  /* Win frame:false 下整条 header 是窗口拖拽区,内部按钮自带 no-drag */
+  -webkit-app-region: drag;
+}
+
+.app-header-wrap :deep(button),
+.app-header-wrap :deep(.n-button),
+.app-header-wrap :deep(.n-select),
+.app-header-wrap :deep(.cloud-status.clickable),
+.app-header-wrap :deep(.n-popover-trigger),
+.app-header-wrap :deep(.n-tooltip-trigger) {
+  -webkit-app-region: no-drag;
 }
 
 .header-left {
@@ -124,6 +135,8 @@ function handleCloudStatusClick() {
 
 .header-right {
   display: flex;
+  /* WindowControls 占右上 ~92px(只剩最小化+关闭两按钮),给它让位避免视觉重叠 */
+  margin-right: 100px;
 }
 
 .cloud-status {
