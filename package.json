@@ -75,7 +75,11 @@
           "!prebuild-install/**",
           "!concurrently/**",
           "!eventsource/**",
-          "!wait-on/**"
+          "!wait-on/**",
+          "!**/node-pty/prebuilds/darwin-arm64/**",
+          "!**/node-pty/prebuilds/darwin-x64/**",
+          "!**/node-pty/prebuilds/win32-arm64/**",
+          "!**/node-pty/build/Release/obj.target/**"
         ]
       }
     ],
@@ -99,7 +103,22 @@
         "from": "resources/python",
         "to": "python",
         "filter": [
-          "**/*"
+          "**/*",
+          "!tcl/**",
+          "!Lib/idlelib/**",
+          "!Lib/ensurepip/**",
+          "!Lib/pydoc_data/**",
+          "!Lib/lib2to3/**",
+          "!Lib/turtledemo/**",
+          "!Lib/tkinter/**",
+          "!Lib/__pycache__/**",
+          "!Lib/test/**",
+          "!Lib/unittest/test/**",
+          "!Lib/distutils/tests/**",
+          "!Lib/site-packages/pip/_vendor/**/test/**",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!**/*.pyo"
         ]
       }
     ],
