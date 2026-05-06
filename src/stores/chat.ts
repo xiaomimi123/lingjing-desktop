@@ -954,19 +954,23 @@ export const useChatStore = defineStore('chat', () => {
       if (agentStatus.phase === 'sending' && agentStatus.runId === idempotencyKey) {
         setAgentStatusPhase(agentId, 'waiting', { runId: idempotencyKey, detail: null })
       }
-      // Watchdog:90s 没收到 SSE final 事件就强制 done。防 OpenClaw 没发结束信号
-      // 或 SSE 连接断了导致前端按钮永远卡在"正在回复"状态。
-      // 90s 远大于一般 LLM 推理时间,正常聊天不会触发。
+      // Watchdog:30s 没收到 SSE final 事件就强制 done。防 OpenClaw 没发结束信号
+      // 或前端 handleAgentStatusEvent 没正确处理 chat state=final。
+      //
+      // v1.0.1 妥协方案:backend.log 证明 OpenClaw 4.21 真发了 chat state=final 事件,
+      // 但前端 chat.ts 没把 phase 变 done。三个可能根因(payload.state 字段名/
+      // agentId 不匹配/listener timing) 待 v1.0.2 加 runtime console.log 复现定位。
+      // 30s 一般 LLM 普通聊天能完整回复,长 reasoning 链路偶尔会被误终止——可接受。
       setTimeout(() => {
         const cur = getOrCreateAgentStatus(agentId)
         const stuck = cur.runId === idempotencyKey &&
           (cur.phase === 'sending' || cur.phase === 'waiting' ||
            cur.phase === 'thinking' || cur.phase === 'replying' || cur.phase === 'tool')
         if (stuck) {
-          console.warn('[chat] watchdog 触发: 90s 没收到 final,强制结束 phase')
+          console.warn('[chat] watchdog 触发: 30s 没收到 final,强制结束 phase')
           setAgentStatusPhase(agentId, 'done', { runId: null, detail: null })
         }
-      }, 90000)
+      }, 30000)
     } catch (error) {
       lastError.value = error instanceof Error ? error.message : String(error)
       messages.value = messages.value.filter((item) => item.id !== idempotencyKey)

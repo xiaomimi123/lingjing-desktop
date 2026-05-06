@@ -269,6 +269,11 @@ gateway.on('error', (err) => {
 })
 
 gateway.on('event', (event, payload) => {
+  // 永远打印事件名(便于诊断 OpenClaw 协议;不打 payload 内容避免噪音)
+  const stateHint = payload?.state ? ` state=${payload.state}` : ''
+  const phaseHint = payload?.phase ? ` phase=${payload.phase}` : ''
+  const streamHint = payload?.stream ? ` stream=${payload.stream}` : ''
+  console.log(`[Gateway] event=${event}${stateHint}${phaseHint}${streamHint}`)
   debug('Gateway event:', event, 'payload keys:', payload ? Object.keys(payload) : null)
   broadcastSSE({ type: 'event', event, payload })
 })
