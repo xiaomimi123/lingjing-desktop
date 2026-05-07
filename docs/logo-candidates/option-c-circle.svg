@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- 候选 C:朱砂圆印 + 反白「灵」 -->
+  <!-- 朱砂圆 -->
+  <circle cx="128" cy="128" r="120" fill="#c8553d" />
+  <!-- 内圈淡线(印章感) -->
+  <circle cx="128" cy="128" r="106" fill="none"
+          stroke="#f5f1e8" stroke-width="2" stroke-opacity="0.55" />
+  <!-- 灵字(宋体反白) -->
+  <text x="128" y="174" text-anchor="middle"
+        font-family="'Songti SC', 'STSong', 'SimSun', '宋体', serif"
+        font-size="160" font-weight="600" fill="#f5f1e8"
+        letter-spacing="0.02em">灵</text>
+</svg>

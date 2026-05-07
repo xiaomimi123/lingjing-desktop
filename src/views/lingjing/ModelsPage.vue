@@ -37,8 +37,14 @@ const applying = ref(false)
 const selectedModelId = ref<string>('')
 const lastError = ref<string>('')
 
-const activeModelId = computed(
-  () => (authStore as any).getSelectedModel?.() || 'gpt-5.4',
+// 真正的"当前生效"应当反映 OpenClaw daemon 实际跑的模型。
+// 优先级:用户最近一次「应用」记到 localStorage 的 → authStore(预留接口) → ''(未知)。
+// 永不 hardcode 字符串(之前写 'gpt-5.4' 导致 UI 永远显示 GPT-5.4 即使 daemon
+// 在用 deepseek-chat / 别的模型,跟实际不一致欺骗用户)。
+const activeModelId = ref<string>(
+  localStorage.getItem('lingjing_selected_model') ||
+    (authStore as any).getSelectedModel?.() ||
+    '',
 )
 const activeProvider = ref<string>(localStorage.getItem(ACTIVE_PROVIDER_KEY) || 'lingjing')
 
@@ -49,6 +55,7 @@ const selectedModel = computed(() =>
 const isCurrentlyActive = computed(
   () =>
     activeProvider.value === 'lingjing' &&
+    !!activeModelId.value &&
     selectedModelId.value === activeModelId.value,
 )
 
@@ -92,6 +99,9 @@ async function applyCloud() {
         localStorage.setItem('lingjing_selected_model', selectedModelId.value)
         localStorage.setItem(ACTIVE_PROVIDER_KEY, 'lingjing')
         activeProvider.value = 'lingjing'
+        // 关键:同步更新 activeModelId,让 UI「当前生效」标签立即跟随
+        // (computed 不会自动监听 localStorage 变化)
+        activeModelId.value = selectedModelId.value
       } catch {
         // ignore
       }

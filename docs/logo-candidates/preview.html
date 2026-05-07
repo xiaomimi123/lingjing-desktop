@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>灵境 Logo 候选</title>
+    <style>
+      :root { --paper: #f5f1e8; --ink: #1d1d1f; --cinnabar: #c8553d; --muted: #8e8780; }
+      html, body {
+        margin: 0; padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        background: var(--paper); color: var(--ink);
+      }
+      .wrap { max-width: 1100px; margin: 0 auto; padding: 56px 32px 96px; }
+      .title {
+        font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+        font-size: 36px; font-weight: 500; letter-spacing: 0.04em;
+        margin: 0 0 6px;
+      }
+      .sub {
+        font-size: 13px; color: var(--muted); letter-spacing: 0.1em;
+        margin: 0 0 48px;
+      }
+
+      .candidate {
+        margin-bottom: 60px;
+        padding-bottom: 60px;
+        border-bottom: 1px solid rgba(29, 29, 31, 0.08);
+      }
+      .candidate:last-child { border-bottom: none; }
+
+      .head {
+        display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+      }
+      .badge {
+        font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+        background: var(--ink); color: var(--paper);
+        padding: 3px 10px; border-radius: 4px;
+      }
+      .badge.recommend { background: var(--cinnabar); }
+      .name {
+        font-family: 'Songti SC', 'STSong', serif;
+        font-size: 22px; font-weight: 500;
+      }
+      .desc { font-size: 13px; color: var(--muted); margin: 0 0 24px; line-height: 1.7; max-width: 720px; }
+
+      .sizes {
+        display: flex; align-items: flex-end; gap: 32px; flex-wrap: wrap;
+        background: rgba(29,29,31,0.02);
+        padding: 32px; border-radius: 14px;
+        border: 1px solid rgba(29,29,31,0.06);
+      }
+      .size { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+      .size img {
+        display: block; image-rendering: -webkit-optimize-contrast;
+        background: rgba(0,0,0,0); border-radius: 6px;
+      }
+      .size .label {
+        font-size: 11px; color: var(--muted); letter-spacing: 0.06em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .taskbar-mock {
+        margin-top: 28px;
+        background: linear-gradient(180deg, #1f1f22 0%, #15151a 100%);
+        border-radius: 8px;
+        padding: 10px 16px;
+        display: flex; align-items: center; gap: 10px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+      .taskbar-mock .icon {
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 6px;
+      }
+      .taskbar-mock .icon.active { background: rgba(255,255,255,0.08); }
+      .taskbar-mock .stub {
+        width: 26px; height: 26px;
+        background: rgba(255,255,255,0.12);
+        border-radius: 5px;
+      }
+      .taskbar-mock .label {
+        font-size: 11px; color: rgba(255,255,255,0.5);
+        margin-left: auto; letter-spacing: 0.08em;
+      }
+
+      .verdict {
+        margin-top: 64px;
+        background: var(--ink); color: var(--paper);
+        padding: 28px 32px; border-radius: 12px;
+        line-height: 1.7;
+      }
+      .verdict h2 {
+        font-family: 'Songti SC', serif;
+        font-size: 22px; font-weight: 500; margin: 0 0 12px;
+      }
+      .verdict p { margin: 0 0 8px; font-size: 14px; }
+      .verdict strong { color: var(--cinnabar); font-weight: 500; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1 class="title">灵境 Logo 候选</h1>
+      <p class="sub">极简东方 / 墨黑 · 宣纸米 · 朱砂红</p>
+
+      <section class="candidate">
+        <div class="head">
+          <span class="badge">A</span>
+          <span class="name">朱砂印章</span>
+        </div>
+        <p class="desc">
+          朱砂红方形印章 + 白色宋体「灵」字,微旋 4°。跟登录页 v1.0 印章一脉相承,
+          品牌一致性最强。但小尺寸下宋体多笔画会糊。
+        </p>
+        <div class="sizes">
+          <div class="size"><img src="option-a-seal.svg" width="16" height="16" /><span class="label">16</span></div>
+          <div class="size"><img src="option-a-seal.svg" width="32" height="32" /><span class="label">32</span></div>
+          <div class="size"><img src="option-a-seal.svg" width="48" height="48" /><span class="label">48</span></div>
+          <div class="size"><img src="option-a-seal.svg" width="64" height="64" /><span class="label">64</span></div>
+          <div class="size"><img src="option-a-seal.svg" width="128" height="128" /><span class="label">128</span></div>
+          <div class="size"><img src="option-a-seal.svg" width="256" height="256" /><span class="label">256</span></div>
+        </div>
+        <div class="taskbar-mock">
+          <div class="icon"><div class="stub"></div></div>
+          <div class="icon"><div class="stub"></div></div>
+          <div class="icon active"><img src="option-a-seal.svg" width="24" height="24" /></div>
+          <div class="icon"><div class="stub"></div></div>
+          <span class="label">Win11 任务栏模拟</span>
+        </div>
+      </section>
+
+      <section class="candidate">
+        <div class="head">
+          <span class="badge recommend">B · 推荐</span>
+          <span class="name">墨黑书法 + 朱砂落款</span>
+        </div>
+        <p class="desc">
+          墨黑圆角方块 + 白色宋体「灵」字 + 右下角朱砂红方点(落款)。
+          三色对比强烈,任意尺寸都不糊;朱砂方点形状跟印章呼应又更现代。
+          最适合做 app icon。
+        </p>
+        <div class="sizes">
+          <div class="size"><img src="option-b-ink.svg" width="16" height="16" /><span class="label">16</span></div>
+          <div class="size"><img src="option-b-ink.svg" width="32" height="32" /><span class="label">32</span></div>
+          <div class="size"><img src="option-b-ink.svg" width="48" height="48" /><span class="label">48</span></div>
+          <div class="size"><img src="option-b-ink.svg" width="64" height="64" /><span class="label">64</span></div>
+          <div class="size"><img src="option-b-ink.svg" width="128" height="128" /><span class="label">128</span></div>
+          <div class="size"><img src="option-b-ink.svg" width="256" height="256" /><span class="label">256</span></div>
+        </div>
+        <div class="taskbar-mock">
+          <div class="icon"><div class="stub"></div></div>
+          <div class="icon"><div class="stub"></div></div>
+          <div class="icon active"><img src="option-b-ink.svg" width="24" height="24" /></div>
+          <div class="icon"><div class="stub"></div></div>
+          <span class="label">Win11 任务栏模拟</span>
+        </div>
+      </section>
+
+      <section class="candidate">
+        <div class="head">
+          <span class="badge">C</span>
+          <span class="name">朱砂圆印</span>
+        </div>
+        <p class="desc">
+          朱砂红圆形 + 内圈淡米白细线 + 反白宋体「灵」字。圆形破开常规方形 icon
+          视觉惯性,色彩冲击强烈;但 Win 任务栏多数 icon 是方形,圆形可能略孤立。
+        </p>
+        <div class="sizes">
+          <div class="size"><img src="option-c-circle.svg" width="16" height="16" /><span class="label">16</span></div>
+          <div class="size"><img src="option-c-circle.svg" width="32" height="32" /><span class="label">32</span></div>
+          <div class="size"><img src="option-c-circle.svg" width="48" height="48" /><span class="label">48</span></div>
+          <div class="size"><img src="option-c-circle.svg" width="64" height="64" /><span class="label">64</span></div>
+          <div class="size"><img src="option-c-circle.svg" width="128" height="128" /><span class="label">128</span></div>
+          <div class="size"><img src="option-c-circle.svg" width="256" height="256" /><span class="label">256</span></div>
+        </div>
+        <div class="taskbar-mock">
+          <div class="icon"><div class="stub"></div></div>
+          <div class="icon"><div class="stub"></div></div>
+          <div class="icon active"><img src="option-c-circle.svg" width="24" height="24" /></div>
+          <div class="icon"><div class="stub"></div></div>
+          <span class="label">Win11 任务栏模拟</span>
+        </div>
+      </section>
+
+      <div class="verdict">
+        <h2>我的推荐 · B 墨黑书法 + 朱砂落款</h2>
+        <p>三个方案里,<strong>B</strong> 在「品牌识别度 × 任意尺寸清晰度 × 跟现有 UI 一致性」三轴均衡最好。</p>
+        <p>朱砂落款方点跟登录页 v1.0 印章 / 注册页「新」印章 / 设置页朱砂红余额是同一套视觉符号,只是缩到 angular pin 的尺度。</p>
+        <p>选定 B 后,我会用 ImageMagick 转成 16/24/32/48/64/128/256 七尺寸的 .ico 文件,放到 build/icon.ico,然后 package.json 加 win.icon 配置,重打装包就有完整应用图标。</p>
+      </div>
+    </div>
+  </body>
+</html>

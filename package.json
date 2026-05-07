@@ -79,7 +79,17 @@
           "!**/node-pty/prebuilds/darwin-arm64/**",
           "!**/node-pty/prebuilds/darwin-x64/**",
           "!**/node-pty/prebuilds/win32-arm64/**",
-          "!**/node-pty/build/Release/obj.target/**"
+          "!**/node-pty/build/Release/obj.target/**",
+          "!sharp/**",
+          "!@img/**",
+          "!png-to-ico/**",
+          "!color/**",
+          "!color-string/**",
+          "!color-name/**",
+          "!color-convert/**",
+          "!simple-swizzle/**",
+          "!is-arrayish/**",
+          "!detect-libc/**"
         ]
       }
     ],
@@ -124,6 +134,7 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "dmg",
@@ -148,6 +159,7 @@
     },
     "win": {
       "executableName": "Lingjing",
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -163,7 +175,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "shortcutName": "灵境",
-      "artifactName": "Lingjing-Setup-${version}.${ext}"
+      "artifactName": "Lingjing-Setup-${version}.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     },
     "publish": {
       "provider": "github",

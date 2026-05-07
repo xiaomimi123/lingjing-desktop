@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- 候选 A:朱砂印章 -->
+  <defs>
+    <filter id="seal-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+      <feOffset dx="0" dy="2" result="offset" />
+      <feComponentTransfer><feFuncA type="linear" slope="0.25" /></feComponentTransfer>
+      <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+  </defs>
+
+  <g transform="translate(128 128) rotate(-4) translate(-104 -104)" filter="url(#seal-shadow)">
+    <!-- 印章主体 -->
+    <rect x="0" y="0" width="208" height="208" rx="20" ry="20" fill="#c8553d" />
+    <!-- 印章内边线 -->
+    <rect x="14" y="14" width="180" height="180" rx="10" ry="10"
+          fill="none" stroke="#f5f1e8" stroke-width="3" stroke-opacity="0.55" />
+    <!-- 灵字(宋体) -->
+    <text x="104" y="146" text-anchor="middle"
+          font-family="'Songti SC', 'STSong', 'SimSun', '宋体', serif"
+          font-size="148" font-weight="600" fill="#f5f1e8">灵</text>
+  </g>
+</svg>

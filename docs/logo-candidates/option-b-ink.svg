@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- 候选 B:墨黑书法 + 朱砂落款 -->
+  <!-- 主体黑色圆角方块 -->
+  <rect x="0" y="0" width="256" height="256" rx="48" ry="48" fill="#1d1d1f" />
+  <!-- 灵字(宋体,纸白色) -->
+  <text x="128" y="178" text-anchor="middle"
+        font-family="'Songti SC', 'STSong', 'SimSun', '宋体', serif"
+        font-size="184" font-weight="600" fill="#f5f1e8"
+        letter-spacing="0.02em">灵</text>
+  <!-- 右下角朱砂落款方点 -->
+  <rect x="200" y="200" width="32" height="32" rx="4" ry="4" fill="#c8553d" />
+  <rect x="204" y="204" width="24" height="24" rx="2" ry="2"
+        fill="none" stroke="#f5f1e8" stroke-width="1.5" stroke-opacity="0.6" />
+</svg>
