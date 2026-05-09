@@ -11,6 +11,7 @@ backups
 test-results/
 playwright-report/
 release/
+.userdata/
 data/wizard.db-shm
 data/wizard.db-wal
 .trae/playwright/.auth/

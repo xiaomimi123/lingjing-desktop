@@ -27,53 +27,36 @@ add('运行平台 = win32', () => ({
   detail: process.platform,
 }))
 
-add('OpenClaw CLI 已安装', () => {
-  const candidates = [
-    join(APPDATA, 'npm', 'openclaw.cmd'),
-    join(APPDATA, 'npm', 'openclaw.exe'),
-  ]
-  const found = candidates.find(existsSync)
-  return found
-    ? { ok: true, detail: found }
-    : { ok: false, detail: `未找到; 请运行 npm i -g openclaw@latest` }
+// 注: v1.5+ 改 embedded 架构, openclaw/hermes/python 全打包进 resources/, 不依赖全局安装.
+// 只检查 "embedded 资源就位"; 用户机器上是否有全局 CLI 已无关紧要.
+const RES_ROOT = process.cwd().endsWith('scripts') ? join(process.cwd(), '..', 'resources') : join(process.cwd(), 'resources')
+
+add('embedded OpenClaw 就位 (resources/openclaw/openclaw.mjs)', () => {
+  const entry = join(RES_ROOT, 'openclaw', 'openclaw.mjs')
+  return existsSync(entry)
+    ? { ok: true, detail: entry }
+    : { ok: false, detail: `缺 ${entry}; v1.5+ 需 embedded 资源就位` }
 })
 
-add('OpenClaw --version 可执行', () => {
+add('embedded Python 就位 (resources/python/python.exe)', () => {
+  const py = join(RES_ROOT, 'python', 'python.exe')
+  return existsSync(py)
+    ? { ok: true, detail: py }
+    : { ok: false, detail: `缺 ${py}; portable Python 没解压` }
+})
+
+add('embedded Hermes 就位 (resources/hermes/venv/Scripts/hermes.exe)', () => {
+  const bin = join(RES_ROOT, 'hermes', 'venv', 'Scripts', 'hermes.exe')
+  return existsSync(bin)
+    ? { ok: true, detail: bin }
+    : { ok: false, detail: `缺 ${bin}` }
+})
+
+add('embedded Hermes --version 可执行 (15s 超时, 冷启可慢)', () => {
+  const bin = join(RES_ROOT, 'hermes', 'venv', 'Scripts', 'hermes.exe')
+  if (!existsSync(bin)) return { ok: false, detail: '二进制不存在, 跳过' }
   try {
-    const out = execSync('openclaw --version', {
-      encoding: 'utf8',
-      timeout: 10000,
-      shell: true,
-    }).trim()
-    return {
-      ok: out.toLowerCase().includes('openclaw'),
-      detail: out.split('\n').pop(),
-    }
-  } catch (e) {
-    return { ok: false, detail: e.message }
-  }
-})
-
-add('Hermes CLI 已安装', () => {
-  const candidates = [
-    join(LOCALAPPDATA, 'hermes', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe'),
-    join(home, 'hermes-agent', '.venv', 'Scripts', 'hermes.exe'),
-  ]
-  const found = candidates.find(existsSync)
-  return found
-    ? { ok: true, detail: found }
-    : {
-        ok: false,
-        detail:
-          '未找到; 请运行: irm https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.ps1 | iex',
-      }
-})
-
-add('Hermes --version 可执行', () => {
-  const bin = join(LOCALAPPDATA, 'hermes', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe')
-  if (!existsSync(bin)) return { ok: false, detail: '二进制不存在,跳过' }
-  try {
-    const out = execSync(`"${bin}" --version`, { encoding: 'utf8', timeout: 10000 }).trim()
+    const out = execSync(`"${bin}" --version`, { encoding: 'utf8', timeout: 15000 }).trim()
     return {
       ok: out.toLowerCase().includes('hermes'),
       detail: out.split('\n')[0],

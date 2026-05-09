@@ -25,6 +25,9 @@
     "test:e2e:headed": "node --env-file-if-exists=.env.test ./node_modules/.bin/playwright test --headed",
     "test:e2e:ui": "node --env-file-if-exists=.env.test ./node_modules/.bin/playwright test --ui",
     "test:report": "playwright show-report",
+    "smoke:env": "node scripts/win-smoke.mjs",
+    "smoke:full": "node --env-file-if-exists=.env.test scripts/smoke-full.mjs",
+    "smoke:full:boot": "node --env-file-if-exists=.env.test scripts/smoke-full.mjs --boot",
     "publish:r2": "node scripts/publish-r2.mjs"
   },
   "build": {
