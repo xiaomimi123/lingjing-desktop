@@ -7,8 +7,10 @@ backups
 !.env.example
 .env.test
 !.env.test.example
+.env.r2
 test-results/
 playwright-report/
+release/
 data/wizard.db-shm
 data/wizard.db-wal
 .trae/playwright/.auth/

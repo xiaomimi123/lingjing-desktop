@@ -2,7 +2,7 @@
   "name": "lingjing-desktop",
   "productName": "灵境",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.5.1",
   "license": "MIT",
   "type": "module",
   "main": "electron/main.js",
@@ -24,7 +24,8 @@
     "test:e2e": "node --env-file-if-exists=.env.test ./node_modules/.bin/playwright test",
     "test:e2e:headed": "node --env-file-if-exists=.env.test ./node_modules/.bin/playwright test --headed",
     "test:e2e:ui": "node --env-file-if-exists=.env.test ./node_modules/.bin/playwright test --ui",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "publish:r2": "node scripts/publish-r2.mjs"
   },
   "build": {
     "appId": "com.lingjing.desktop",
@@ -178,14 +179,22 @@
       "artifactName": "Lingjing-Setup-${version}.${ext}",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico"
+      "installerHeaderIcon": "build/icon.ico",
+      "include": "build/installer.nsh"
     },
-    "publish": {
-      "provider": "github",
-      "owner": "xiaomimi123",
-      "repo": "lingjing-desktop",
-      "releaseType": "release"
-    }
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://pub-b7d320ed19bf4f4198adf334892f2e5b.r2.dev",
+        "channel": "latest"
+      },
+      {
+        "provider": "github",
+        "owner": "xiaomimi123",
+        "repo": "lingjing-desktop",
+        "releaseType": "release"
+      }
+    ]
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
@@ -204,7 +213,6 @@
     "better-sqlite3": "^12.9.0",
     "check-disk-space": "^3.4.0",
     "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
     "edge-tts-client": "^1.0.2",
     "electron-updater": "^6.8.3",
     "express": "^5.2.1",
@@ -228,6 +236,7 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1044.0",
     "@electron/rebuild": "^3.7.1",
     "@playwright/test": "^1.59.1",
     "@types/js-yaml": "^4.0.9",
@@ -238,6 +247,7 @@
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.8.1",
     "concurrently": "^9.2.1",
+    "dotenv": "^17.4.2",
     "electron": "^36.9.5",
     "electron-builder": "^25.1.8",
     "esbuild": "^0.28.0",
