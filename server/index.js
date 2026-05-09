@@ -13,6 +13,41 @@ import checkDiskSpace from 'check-disk-space'
 import { execSync } from 'child_process'
 import pty from 'node-pty'
 import db, { createBackupRecord, updateBackupRecord, getBackupRecord, getBackupRecords, getBackupRecordsCount, deleteBackupRecord } from './database.js'
+
+// ============================================================================
+// v1.5 路径 B: 灵境 chat 直接转发 aitoken.homes (绕过 OpenClaw daemon chat 引擎)
+// 原因: OpenClaw daemon 在 packaged 客户机上 onboard auth 永远配不上,
+//        chat.send 始终报 "No API key found for provider openai"。
+//        v1.0-1.4.1 反复修都没解决。直接绕过 daemon chat 是更可靠路径。
+// daemon 仍然跑(skills/agent/sessions 还能用),只是 chat 不经过它。
+// ============================================================================
+let lingjingApiToken = null
+let lingjingApiBaseUrl = 'https://api.aitoken.homes/v1'
+const chatHistoryStore = new Map() // sessionKey -> [{role, content, timestamp}]
+
+function appendChatHistory(sessionKey, role, content) {
+  if (!sessionKey) return
+  const list = chatHistoryStore.get(sessionKey) || []
+  list.push({ role, content, timestamp: new Date().toISOString() })
+  // 控内存:每 session 留最近 50 条
+  if (list.length > 50) list.splice(0, list.length - 50)
+  chatHistoryStore.set(sessionKey, list)
+}
+function getChatHistory(sessionKey) {
+  return chatHistoryStore.get(sessionKey) || []
+}
+
+// 节流日志:OpenClaw 没起来时 disconnect/error 事件每秒触发数次,backend.log 一晚被刷爆。
+// 30s 内同一 key 的日志只在第 1 次和每 30s 边界写一次。
+const __logThrottle = new Map()
+function __throttledLog(key, fn, intervalMs = 30000) {
+  const now = Date.now()
+  const last = __logThrottle.get(key) || 0
+  if (now - last >= intervalMs) {
+    __logThrottle.set(key, now)
+    fn()
+  }
+}
 import hermesProxyRouter, { initHermesConfig, setAuthMiddleware } from './hermes-proxy.js'
 import { registerScenarioRoutes } from './scenarios-routes.js'
 
@@ -61,7 +96,11 @@ function readOpenClawAuthToken() {
   try {
     const cfgPath = join(os.homedir(), '.openclaw', 'openclaw.json')
     if (!existsSync(cfgPath)) return null
-    const cfg = JSON.parse(readFileSync(cfgPath, 'utf-8'))
+    let raw = readFileSync(cfgPath, 'utf-8')
+    // v1.3.4: strip UTF-8 BOM (0xFEFF) — PowerShell `Set-Content -Encoding UTF8`
+    // 写出来的 JSON 默认带 BOM,Node.js JSON.parse 不容忍。
+    if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1)
+    const cfg = JSON.parse(raw)
     const t = cfg?.gateway?.auth?.token
     return typeof t === 'string' && t.length > 0 ? t : null
   } catch (e) {
@@ -258,13 +297,14 @@ gateway.on('version', (info) => {
 })
 
 gateway.on('disconnected', () => {
-  console.log('[Gateway] Disconnected from OpenClaw')
+  __throttledLog('gateway-disconnected-1', () => console.log('[Gateway] Disconnected from OpenClaw'))
   gatewayVersion = null
   broadcastSSE({ type: 'gatewayState', state: 'disconnected' })
 })
 
 gateway.on('error', (err) => {
-  console.error('[Gateway] Error:', err.message)
+  __throttledLog('gateway-error-1:' + (err?.message || ''),
+    () => console.error('[Gateway] Error:', err.message))
   debug('Error stack:', err.stack)
 })
 
@@ -335,6 +375,156 @@ app.get('/api/auth/config', (req, res) => {
   res.json({
     enabled: isAuthEnabled(),
   })
+})
+
+/**
+ * v1.5: Electron 主进程 configureProvider 后调本端点把灵境 sk-xxx 注入 server,
+ * 启用 chat 直接转发 aitoken.homes 路径(绕过 OpenClaw daemon)。
+ * 仅 loopback 接受(同机 Electron 主进程),拒绝远程访问。
+ */
+app.post('/api/internal/set-lingjing-token', (req, res) => {
+  const remote = req.socket?.remoteAddress || ''
+  const isLoopback = remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1'
+  if (!isLoopback) {
+    return res.status(403).json({ ok: false, error: 'forbidden: loopback only' })
+  }
+  const { token, baseUrl } = req.body || {}
+  if (!token || typeof token !== 'string' || token.length < 10) {
+    return res.status(400).json({ ok: false, error: 'invalid token' })
+  }
+  lingjingApiToken = token
+  if (baseUrl && typeof baseUrl === 'string') lingjingApiBaseUrl = baseUrl.replace(/\/+$/, '')
+  console.log(`[lingjing-bypass] token set, suffix=...${token.slice(-6)}, baseUrl=${lingjingApiBaseUrl}`)
+  return res.json({ ok: true })
+})
+
+/**
+ * v1.5 路径 B: 拦截 chat.send,直接 fetch aitoken.homes,流式回应通过 SSE 推前端。
+ * 模拟 OpenClaw chat event 协议(chat.delta/chat.final/chat.error),前端 chat.ts 不动。
+ */
+async function handleChatSendBypass(req, res, params) {
+  const idempotencyKey = params?.idempotencyKey || `rpc-${Date.now()}`
+  const sessionKey = params?.sessionKey || params?.key || params?.session || 'default'
+  const messageText = params?.message || params?.input || ''
+  const model = (params?.model && String(params.model).trim()) || 'gpt-5.4'
+
+  // 立刻 ack — 前端 sendMessage 拿到后转 'waiting' 等 SSE
+  res.json({ ok: true, payload: { runId: idempotencyKey, lingjingBypass: true } })
+
+  // 异步处理 stream
+  ;(async () => {
+    try {
+      // 拼上下文 + 写 user message
+      const history = getChatHistory(sessionKey)
+      const messages = [
+        ...history.map((h) => ({ role: h.role, content: h.content })),
+        { role: 'user', content: messageText },
+      ]
+      appendChatHistory(sessionKey, 'user', messageText)
+
+      const upstream = await fetch(`${lingjingApiBaseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lingjingApiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ model, messages, stream: true }),
+      })
+
+      if (!upstream.ok) {
+        const errText = await upstream.text().catch(() => '')
+        broadcastSSE({
+          type: 'event',
+          event: 'chat.error',
+          payload: {
+            state: 'error', runId: idempotencyKey, key: sessionKey,
+            error: `HTTP ${upstream.status}: ${errText.slice(0, 200)}`,
+          },
+        })
+        return
+      }
+
+      let fullContent = ''
+      const reader = upstream.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          const t = line.trim()
+          if (!t.startsWith('data:')) continue
+          const data = t.slice(5).trim()
+          if (data === '[DONE]') continue
+          try {
+            const json = JSON.parse(data)
+            const delta = json.choices?.[0]?.delta?.content
+            if (delta) {
+              fullContent += delta
+              broadcastSSE({
+                type: 'event',
+                event: 'chat.delta',
+                payload: { state: 'delta', runId: idempotencyKey, key: sessionKey, content: delta },
+              })
+            }
+          } catch { /* skip malformed chunk */ }
+        }
+      }
+
+      appendChatHistory(sessionKey, 'assistant', fullContent)
+      broadcastSSE({
+        type: 'event',
+        event: 'chat.final',
+        payload: { state: 'final', runId: idempotencyKey, key: sessionKey, content: fullContent },
+      })
+    } catch (err) {
+      broadcastSSE({
+        type: 'event',
+        event: 'chat.error',
+        payload: { state: 'error', runId: idempotencyKey, key: sessionKey, error: err?.message || String(err) },
+      })
+    }
+  })()
+}
+
+/**
+ * v1.3.0 自检端点:发一条 minimal chat 请求测试整条链路。
+ * 主进程 preflight-test-chat IPC 调本端点,20s 超时(留 10s 给 IPC 自己的 30s 超时余量)。
+ */
+app.post('/api/lingjing/preflight-test-chat', async (req, res) => {
+  const t0 = Date.now()
+  try {
+    if (!gateway || gateway.ws?.readyState !== 1 /* OPEN */) {
+      return res.json({
+        ok: false,
+        latencyMs: Date.now() - t0,
+        message: 'OpenClaw Gateway 未连接(WebSocket not OPEN)',
+      })
+    }
+    const prompt = (req.body && req.body.prompt) || 'ping'
+    const result = await gateway.call('chat.send', {
+      messages: [{ role: 'user', content: prompt }],
+      stream: false,
+      maxTokens: 10,
+    }, 20000).catch((err) => ({ __error: err?.message || String(err) }))
+    if (result && result.__error) {
+      return res.json({ ok: false, latencyMs: Date.now() - t0, message: result.__error })
+    }
+    return res.json({
+      ok: true,
+      latencyMs: Date.now() - t0,
+      response: typeof result === 'string' ? result.slice(0, 100) : '(non-string response)',
+    })
+  } catch (e) {
+    return res.json({
+      ok: false,
+      latencyMs: Date.now() - t0,
+      message: e?.message || String(e),
+    })
+  }
 })
 
 app.post('/api/auth/login', (req, res) => {
@@ -447,11 +637,13 @@ app.post('/api/config', authMiddleware, (req, res) => {
         broadcastSSE({ type: 'gatewayState', state: 'connected' })
       })
       gateway.on('disconnected', () => {
-        console.log('[Gateway] Disconnected from OpenClaw')
+        __throttledLog('gateway-disconnected-2',
+          () => console.log('[Gateway] Disconnected from OpenClaw'))
         broadcastSSE({ type: 'gatewayState', state: 'disconnected' })
       })
       gateway.on('error', (err) => {
-        console.error('[Gateway] Error:', err.message)
+        __throttledLog('gateway-error-2:' + (err?.message || ''),
+          () => console.error('[Gateway] Error:', err.message))
       })
       gateway.on('event', (event, payload) => {
         broadcastSSE({ type: 'event', event, payload })
@@ -1213,6 +1405,35 @@ app.post('/api/rpc', authMiddleware, async (req, res) => {
 
   if (!method) {
     return res.status(400).json({ error: 'Method is required' })
+  }
+
+  // v1.5.1 路径 B: 只读方法**不依赖 token** 直接返回(避免登录前 daemon 卡死前端 15s)
+  // chat.send 必须有 token 才能 fetch aitoken.homes
+  if (method === 'chat.history' || method === 'sessions.history' ||
+      method === 'session.history' || method === 'sessions.get' || method === 'session.get') {
+    const sessionKey = params?.sessionKey || params?.key || params?.session || 'default'
+    const items = getChatHistory(sessionKey).map((h, idx) => ({
+      id: `bypass-${idx}-${h.timestamp}`,
+      role: h.role,
+      content: h.content,
+      timestamp: h.timestamp,
+    }))
+    return res.json({ ok: true, payload: { messages: items, items } })
+  }
+  if (method === 'config.get') {
+    return res.json({ ok: true, payload: {} })
+  }
+  if (method === 'sessions.list' || method === 'session.list') {
+    return res.json({ ok: true, payload: { sessions: [], items: [] } })
+  }
+  if (method === 'skills.status' || method === 'skills.list') {
+    return res.json({ ok: true, payload: { skills: [], items: [] } })
+  }
+  if (method === 'chat.send') {
+    if (!lingjingApiToken) {
+      return res.json({ ok: false, error: { message: '灵境 token 未注入,请先登录' } })
+    }
+    return await handleChatSendBypass(req, res, params || {})
   }
 
   if (!gateway.isConnected) {

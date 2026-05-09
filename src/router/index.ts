@@ -67,6 +67,16 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
+  // v1.3.0: 已登录用户,本次 session 还没通过自检 → 强制跳 /preflight。
+  // skipPreflight=true 的路由(/preflight 自身)放行避免死循环。
+  if (!to.meta.skipPreflight) {
+    const preflightOk = sessionStorage.getItem('lingjing-preflight-passed') === 'ok'
+    if (!preflightOk) {
+      next({ name: 'Preflight', query: { redirect: to.fullPath } })
+      return
+    }
+  }
+
   next()
 })
 

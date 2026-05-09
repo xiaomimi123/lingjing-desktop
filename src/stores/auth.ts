@@ -82,6 +82,12 @@ export const useAuthStore = defineStore('auth', () => {
             })
             .catch(() => loginLocalSilent())
         }
+        // v1.2.3: stored credential 自动登录(走 checkAuth 不走 login)的用户也强制
+        // reconfigure,确保 OpenClaw 配置文件里的 sk-xxx 是最新的;否则 daemon 用的可能是
+        // v1.0.x 留下的失效 token,导致 chat.send 卡死。force=true 跳过 sessionStorage 缓存。
+        configureLocalProvidersFromLingjing({ force: true }).catch((err) => {
+          console.warn('[auth] checkAuth reconfigure failed (non-fatal):', err)
+        })
         return true
       }
       setLingjingLoggedIn(false)
@@ -226,6 +232,15 @@ export const useAuthStore = defineStore('auth', () => {
     setLocalToken(null)
     setLingjingLoggedIn(false)
     user.value = null
+
+    // v1.3.0: 退出登录时清 preflight 缓存,下次登录强制重做自检
+    try {
+      sessionStorage.removeItem('lingjing-preflight-passed')
+      sessionStorage.removeItem('lingjing-preflight-last-result')
+      sessionStorage.removeItem('lingjing-preflight-skipped')
+    } catch {
+      // ignore
+    }
 
     // 停掉余额轮询(动态 import 避免 store 之间循环依赖)
     try {

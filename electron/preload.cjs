@@ -65,6 +65,35 @@ contextBridge.exposeInMainWorld('lingjing', {
   },
   appVersion: () => ipcRenderer.invoke('lingjing:app-version'),
   /**
+   * 错误日志 — 系统设置「错误日志」面板用,
+   * 给用户复制完整日志反馈给开发者排查。
+   */
+  getErrorLogs: () => ipcRenderer.invoke('lingjing:get-error-logs'),
+  openLogsFolder: () => ipcRenderer.invoke('lingjing:open-logs-folder'),
+  /**
+   * v1.2.3: 强制重启 OpenClaw daemon(杀旧 + 删旧 task + 重 spawn)。
+   * 模型切换或诊断到 chat 卡死时调用。
+   */
+  restartOpenClaw: () => ipcRenderer.invoke('lingjing:openclaw-restart'),
+  /**
+   * v1.4: 诊断契约 — 一次拿全所有诊断信息(端口/task/进程/配置/日志)。
+   * 给设置页「诊断」section 展示 + 一键复制 markdown 反馈。
+   */
+  diagnoseFull: () => ipcRenderer.invoke('lingjing:diagnose-full'),
+  /**
+   * v1.3.0: 自检 6 步,登录后逐步调用,失败可重试。
+   * 每步返回 { ok, durationMs, message? } 结构。
+   */
+  preflight: {
+    backendHealth: () => ipcRenderer.invoke('lingjing:preflight-backend-health'),
+    cleanupStale: () => ipcRenderer.invoke('lingjing:preflight-cleanup-stale'),
+    startOpenClaw: () => ipcRenderer.invoke('lingjing:preflight-start-openclaw'),
+    configureProviders: (params) =>
+      ipcRenderer.invoke('lingjing:preflight-configure-providers', params),
+    testChat: () => ipcRenderer.invoke('lingjing:preflight-test-chat'),
+    startHermes: () => ipcRenderer.invoke('lingjing:preflight-start-hermes'),
+  },
+  /**
    * 加载动画窗口:监听主进程推送的启动阶段文案(如"正在解压本地 AI 运行时...")。
    * 仅 loading.html 用,渲染端订阅后会拿到字符串文本。
    */

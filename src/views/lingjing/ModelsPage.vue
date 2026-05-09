@@ -105,7 +105,21 @@ async function applyCloud() {
       } catch {
         // ignore
       }
-      message.success(`已切换到 ${selectedModel.value?.name || selectedModelId.value}`)
+      message.success(`已切换到 ${selectedModel.value?.name || selectedModelId.value},正在重启本地网关让新模型生效...`)
+      // v1.2.3: 强制重启 OpenClaw daemon,让 daemon 重新读取 ~/.openclaw/openclaw.json
+      // (configureLocalProviders 只写文件,daemon 不会自动 reload)。
+      // fire-and-forget 不阻塞 UI;约 30s 后用户即可正常发消息。
+      if (bridge?.restartOpenClaw) {
+        bridge.restartOpenClaw().then((r: any) => {
+          if (r?.ok) {
+            message.success(`本地网关已重启,可以开始对话了`, { duration: 4000 })
+          } else {
+            message.warning('本地网关重启异常,如果对话失败,请到「设置 → 错误日志」复制日志反馈')
+          }
+        }).catch((e: any) => {
+          console.warn('[models] restartOpenClaw failed:', e)
+        })
+      }
     } else {
       message.error(result?.openclawMessage || result?.message || '切换失败')
     }

@@ -8,6 +8,9 @@ import {
   NCollapseItem,
   NAlert,
   NSpace,
+  NTabs,
+  NTabPane,
+  NInput,
   useMessage,
 } from 'naive-ui'
 import { useRouter } from 'vue-router'
@@ -184,6 +187,223 @@ function handleThemeChange(mode: ThemeMode) {
 function goModels() {
   router.push({ name: 'Models' })
 }
+
+// ============================================================================
+// 错误日志 — 用户复制后反馈给 1186453507@qq.com 排查
+// ============================================================================
+const FEEDBACK_EMAIL = '1186453507@qq.com'
+const FEEDBACK_GITHUB = 'https://github.com/xiaomimi123/lingjing-desktop/issues'
+const logsLoading = ref(false)
+const logsActiveTab = ref<'main' | 'backend' | 'openclaw'>('main')
+const logsMain = ref<string>('')
+const logsBackend = ref<string>('')
+const logsOpenClaw = ref<string>('')
+const logsHeader = ref<string>('')
+const logsMainPath = ref<string>('')
+const logsBackendPath = ref<string>('')
+const logsOpenClawPath = ref<string>('')
+const logsDetectedPort = ref<number | null>(null)
+
+async function handleRefreshLogs() {
+  if (logsLoading.value) return
+  logsLoading.value = true
+  try {
+    const r: any = await window.lingjing?.getErrorLogs?.()
+    if (!r) {
+      message.error('日志接口不可用(开发模式或缺少 IPC)')
+      return
+    }
+    logsMain.value = r.main || '(空)'
+    logsBackend.value = r.backend || '(空)'
+    logsOpenClaw.value = r.openclaw || '(空)'
+    logsMainPath.value = r.mainPath || ''
+    logsBackendPath.value = r.backendPath || ''
+    logsOpenClawPath.value = r.openclawPath || ''
+    logsDetectedPort.value = r.detectedOpenClawPort ?? null
+    logsHeader.value =
+      `=== 灵境 错误日志反馈 ===\n` +
+      `版本: v${r.version}\n` +
+      `平台: ${r.platform} / ${r.arch}\n` +
+      `时间: ${r.time}\n` +
+      `OpenClaw 端口: ${r.detectedOpenClawPort ? r.detectedOpenClawPort + ' (探测得出)' : '未探测到 ⚠'}\n` +
+      `主进程日志: ${r.mainPath}\n` +
+      `后端日志: ${r.backendPath}\n` +
+      `OpenClaw 日志: ${r.openclawPath}\n`
+  } catch (e: any) {
+    message.error(e?.message || '读取日志失败')
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+async function handleCopyLogs() {
+  if (!logsHeader.value) {
+    await handleRefreshLogs()
+  }
+  const payload =
+    logsHeader.value +
+    `\n--- main.log (最近 300 行) ---\n${logsMain.value}\n` +
+    `\n--- backend.log (最近 300 行) ---\n${logsBackend.value}\n` +
+    `\n--- openclaw.log (最近 300 行) ---\n${logsOpenClaw.value}\n`
+  try {
+    await navigator.clipboard.writeText(payload)
+    message.success('已复制全部日志到剪贴板,粘贴到邮件/Issue 即可')
+  } catch (e: any) {
+    message.error('复制失败:' + (e?.message || ''))
+  }
+}
+
+async function handleOpenLogsFolder() {
+  try {
+    const r: any = await window.lingjing?.openLogsFolder?.()
+    if (r && !r.ok) {
+      message.error(r.message || '打开失败')
+    }
+  } catch (e: any) {
+    message.error(e?.message || '打开失败')
+  }
+}
+
+function handleOpenFeedbackEmail() {
+  const subject = encodeURIComponent(`灵境 v${appVersion} 错误反馈`)
+  const body = encodeURIComponent('请在下方粘贴日志(已复制到剪贴板),并描述出错时的操作:\n\n')
+  window.open(`mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`, '_self')
+}
+
+// v1.4 诊断契约 — 一键拿全所有诊断信息生成 markdown 反馈
+const diagnoseLoading = ref(false)
+async function handleFullDiagnose() {
+  if (diagnoseLoading.value) return
+  diagnoseLoading.value = true
+  try {
+    const bridge: any = (window as any).lingjing
+    if (!bridge?.diagnoseFull) {
+      message.error('诊断接口不可用,请重启应用')
+      return
+    }
+    const r = await bridge.diagnoseFull()
+    if (r?.error) {
+      message.error('诊断失败: ' + r.error)
+      return
+    }
+    const md = formatDiagnoseMarkdown(r)
+    await navigator.clipboard.writeText(md)
+    const portCnt = (r.openclawPorts || []).filter((p: any) => p.listening).length
+    const cfgOk = r.openclawConfig?.parseable && r.openclawConfig?.fields?.['gateway.mode'] === 'local'
+    const keyOk = r.gatewayCmd?.hasOpenAIKey
+    message.success(
+      `诊断完成 (端口监听 ${portCnt} 个, mode=${cfgOk ? 'OK' : '✗'}, OPENAI_KEY=${keyOk ? 'OK' : '✗'}),已复制 markdown 到剪贴板`,
+      { duration: 6000 }
+    )
+  } catch (e: any) {
+    message.error(e?.message || '诊断失败')
+  } finally {
+    diagnoseLoading.value = false
+  }
+}
+
+function formatDiagnoseMarkdown(d: any): string {
+  const lines: string[] = []
+  lines.push('# 灵境完整诊断报告')
+  lines.push('')
+  lines.push(`- 版本: v${d.meta?.version}`)
+  lines.push(`- 平台: ${d.meta?.platform} / ${d.meta?.arch}`)
+  lines.push(`- 时间: ${d.meta?.ts}`)
+  lines.push(`- userData: \`${d.meta?.userDataPath}\``)
+  lines.push(`- 探测到的 OpenClaw 端口: ${d.meta?.detectedOpenClawPort ?? '(未探测到)'}`)
+  lines.push('')
+
+  lines.push('## OpenClaw 端口扫描 (18789-18795)')
+  for (const p of (d.openclawPorts || [])) {
+    lines.push(`- ${p.port}: ${p.listening ? '✓ LISTENING' : '✗'}`)
+  }
+  lines.push('')
+
+  lines.push('## Scheduled Tasks')
+  for (const t of (d.scheduledTasks || [])) {
+    if (t?.exists) {
+      lines.push(`- ${t.name}: state=${t.state}, lastRunTime=${t.lastRunTime}, lastTaskResult=${t.lastTaskResult}`)
+    } else {
+      lines.push(`- ${t?.name || '?'}: ✗ 不存在`)
+    }
+  }
+  lines.push('')
+
+  lines.push('## Daemon 进程')
+  if (d.daemonProcess) {
+    lines.push(`- pid: ${d.daemonProcess.pid}`)
+    lines.push(`- name: ${d.daemonProcess.name}`)
+    lines.push(`- CPU 累计: ${d.daemonProcess.cpuSec}s`)
+    lines.push(`- 内存: ${d.daemonProcess.memMB} MB`)
+    lines.push(`- 启动时间: ${d.daemonProcess.startTime}`)
+  } else {
+    lines.push('- (无 daemon 进程在监听)')
+  }
+  lines.push('')
+
+  lines.push('## openclaw.json 配置')
+  const oc = d.openclawConfig || {}
+  lines.push(`- 路径: \`${oc.path}\``)
+  lines.push(`- 存在: ${oc.exists ? '✓' : '✗'}`)
+  lines.push(`- 含 BOM: ${oc.hasBom ? '⚠ 是' : '否'}`)
+  lines.push(`- 可解析: ${oc.parseable ? '✓' : '✗ ' + (oc.parseError || '')}`)
+  for (const [k, v] of Object.entries(oc.fields || {})) {
+    lines.push(`- ${k}: ${JSON.stringify(v)}`)
+  }
+  lines.push('')
+
+  lines.push('## gateway.cmd 状态')
+  const gc = d.gatewayCmd || {}
+  lines.push(`- 路径: \`${gc.path}\``)
+  lines.push(`- 存在: ${gc.exists ? '✓' : '✗'}`)
+  if (gc.exists) {
+    lines.push(`- 含 OPENAI_API_KEY: ${gc.hasOpenAIKey ? '✓' : '✗'}`)
+    lines.push(`- 含 OPENAI_BASE_URL: ${gc.hasOpenAIBaseUrl ? '✓' : '✗'}`)
+    lines.push(`- 端口: ${gc.portFromCmd}`)
+    lines.push(`- 文件大小: ${gc.bytes} 字节`)
+  }
+  lines.push('')
+
+  lines.push('## 启动期断言 (startupAssertions)')
+  if ((d.startupAssertions || []).length === 0) {
+    lines.push('- (无)')
+  } else {
+    for (const a of d.startupAssertions) {
+      const extra = Object.entries(a)
+        .filter(([k]) => k !== 'step' && k !== 'ts')
+        .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+        .join(' ')
+      lines.push(`- [${a.ts}] ${a.step} ${extra}`)
+    }
+  }
+  lines.push('')
+
+  lines.push('## 日志 (最后 N 行)')
+  lines.push('### main.log')
+  lines.push('```')
+  lines.push((d.logs?.mainTail || '').split('\n').slice(-80).join('\n'))
+  lines.push('```')
+  lines.push('### backend.log')
+  lines.push('```')
+  lines.push((d.logs?.backendTail || '').split('\n').slice(-80).join('\n'))
+  lines.push('```')
+  lines.push('### openclaw.log (灵境主进程捕获)')
+  lines.push('```')
+  lines.push((d.logs?.openclawTail || '').split('\n').slice(-40).join('\n'))
+  lines.push('```')
+  if (d.logs?.daemonLog) {
+    lines.push(`### OpenClaw daemon 自身日志 (\`${d.logs.daemonLog.name}\`)`)
+    lines.push('```')
+    lines.push((d.logs.daemonLog.tail || '').split('\n').slice(-60).join('\n'))
+    lines.push('```')
+  }
+  return lines.join('\n')
+}
+
+onMounted(() => {
+  // 进设置页就预读一次,这样用户点"复制"立刻有内容
+  handleRefreshLogs().catch(() => { /* 静默 */ })
+})
 
 const reconfiguring = ref(false)
 async function handleQuickReconfigure() {
@@ -371,6 +591,83 @@ async function handleQuickReconfigure() {
       </div>
     </section>
 
+    <!-- 错误日志(反馈) -->
+    <section class="card">
+      <h2 class="card-title">错误日志</h2>
+
+      <NAlert
+        type="info"
+        :bordered="false"
+        :show-icon="false"
+        style="margin-bottom: 14px;"
+      >
+        程序出问题了？把下面的日志复制后发给我们,定位问题更快:
+        <br />
+        <span class="feedback-line">
+          📧 邮箱: <a class="feedback-link" :href="`mailto:${FEEDBACK_EMAIL}`">{{ FEEDBACK_EMAIL }}</a>
+        </span>
+      </NAlert>
+
+      <NTabs v-model:value="logsActiveTab" type="line" size="small" animated>
+        <NTabPane name="main" tab="主进程">
+          <NInput
+            :value="logsMain"
+            type="textarea"
+            readonly
+            placeholder="日志加载中..."
+            :autosize="{ minRows: 10, maxRows: 18 }"
+            class="logs-textarea"
+          />
+        </NTabPane>
+        <NTabPane name="backend" tab="后端">
+          <NInput
+            :value="logsBackend"
+            type="textarea"
+            readonly
+            placeholder="日志加载中..."
+            :autosize="{ minRows: 10, maxRows: 18 }"
+            class="logs-textarea"
+          />
+        </NTabPane>
+        <NTabPane name="openclaw" tab="OpenClaw">
+          <div v-if="logsDetectedPort" class="oc-port-hint">
+            ✓ 已探测到 OpenClaw 端口 <strong>{{ logsDetectedPort }}</strong>
+          </div>
+          <div v-else class="oc-port-hint warn">
+            ⚠ 未探测到 OpenClaw 端口(18789-18795 都不在监听),AI 功能可能不可用。请把日志反馈给开发者。
+          </div>
+          <NInput
+            :value="logsOpenClaw"
+            type="textarea"
+            readonly
+            placeholder="日志加载中..."
+            :autosize="{ minRows: 10, maxRows: 18 }"
+            class="logs-textarea"
+          />
+        </NTabPane>
+      </NTabs>
+
+      <div class="action-row">
+        <NSpace :size="8" wrap>
+          <NButton type="primary" size="small" :loading="logsLoading" @click="handleCopyLogs">
+            📋 复制全部日志
+          </NButton>
+          <NButton size="small" @click="handleOpenLogsFolder">
+            📂 打开日志文件夹
+          </NButton>
+          <NButton size="small" :loading="logsLoading" @click="handleRefreshLogs">
+            🔄 刷新
+          </NButton>
+          <NButton size="small" @click="handleOpenFeedbackEmail">
+            ✉ 写邮件反馈
+          </NButton>
+          <NButton type="info" size="small" :loading="diagnoseLoading" @click="handleFullDiagnose">
+            🔍 完整诊断报告
+          </NButton>
+        </NSpace>
+      </div>
+    </section>
+
     <!-- 关于 -->
     <section class="card">
       <h2 class="card-title">关于</h2>
@@ -432,6 +729,36 @@ async function handleQuickReconfigure() {
 .card:hover {
   border-color: rgba(29, 29, 31, 0.12);
 }
+
+/* 错误日志面板:textarea 用等宽字体方便阅读栈帧 */
+.logs-textarea :deep(textarea) {
+  font-family: 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.oc-port-hint {
+  font-size: 12px;
+  color: var(--n-text-color-3);
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background: rgba(40, 167, 69, 0.08);
+}
+.oc-port-hint.warn {
+  background: rgba(200, 85, 61, 0.10);
+  color: var(--cinnabar);
+}
+.feedback-line {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 13px;
+}
+.feedback-link {
+  color: var(--cinnabar);
+  text-decoration: none;
+  font-weight: 500;
+}
+.feedback-link:hover { text-decoration: underline; }
 
 .card-title {
   font-size: 11px;

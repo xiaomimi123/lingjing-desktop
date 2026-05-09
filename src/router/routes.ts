@@ -20,6 +20,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { public: true, hidden: true },
   },
   {
+    path: '/preflight',
+    name: 'Preflight',
+    component: () => import('@/views/lingjing/PreflightPage.vue'),
+    meta: { hidden: true, requiresAuth: true, skipPreflight: true },
+  },
+  {
     path: '/',
     component: () => import('@/layouts/DefaultLayout.vue'),
     meta: { requiresAuth: true },

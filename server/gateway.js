@@ -35,6 +35,23 @@ export class OpenClawGateway extends EventEmitter {
     this.reconnectTimer = null
     this.heartbeatTimer = null
     this.deviceIdentity = null
+    // 重连节流:OpenClaw 没起来时会刷千行 [Gateway] WebSocket error,backend.log 没法看。
+    // 第一次错误正常打印,30s 内重复同 message 的累加;30s 到时打印一行摘要再继续。
+    this._errorSuppress = { msg: null, count: 0, firstTs: 0, lastPrintTs: 0 }
+  }
+
+  _logErrorThrottled(msg) {
+    const now = Date.now()
+    const s = this._errorSuppress
+    if (msg !== s.msg || now - s.lastPrintTs > 30000) {
+      if (s.count > 1 && s.msg) {
+        console.error(`[Gateway] (上一条错误"${s.msg}"在 ${Math.round((now - s.firstTs) / 1000)}s 内累计 ${s.count} 次)`)
+      }
+      console.error('[Gateway] WebSocket error:', msg)
+      this._errorSuppress = { msg, count: 1, firstTs: now, lastPrintTs: now }
+    } else {
+      s.count++
+    }
   }
 
   debug(...args) {
@@ -88,7 +105,7 @@ export class OpenClawGateway extends EventEmitter {
       })
 
       this.ws.on('error', (err) => {
-        console.error('[Gateway] WebSocket error:', err.message)
+        this._logErrorThrottled(err?.message || String(err))
         this.emit('error', err)
       })
     } catch (err) {
