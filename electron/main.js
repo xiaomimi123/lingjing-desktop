@@ -362,8 +362,12 @@ async function ensureOpenClawRunning() {
   const isJs = bin.endsWith('.mjs') || bin.endsWith('.js') || bin.endsWith('.cjs')
   const cmd = isJs ? process.execPath : bin
   const onboardArgs = isJs ? [bin, 'onboard', '--mode', 'local'] : ['onboard', '--mode', 'local']
-  const installArgs = isJs ? [bin, 'gateway', 'install'] : ['gateway', 'install']
-  const startArgs   = isJs ? [bin, 'gateway', 'start']   : ['gateway', 'start']
+  // v1.5.x 真根因修复: OpenClaw 4.21 的 `gateway install` 不带 --force 会静默 exit 0
+  // 但什么都不做 (没注册 schtask, 没监听端口). 必须 --force --json 才会真正干活并输出 JSON.
+  // 裸机实测: 不带 flag → 0 stdout 0 stderr 静默退; 加 flag → 输出 {"action":"install","ok":true,...}
+  const installFlags = ['--force', '--json']
+  const installArgs = isJs ? [bin, 'gateway', 'install', ...installFlags] : ['gateway', 'install', ...installFlags]
+  const startArgs   = isJs ? [bin, 'gateway', 'start', '--json']          : ['gateway', 'start', '--json']
   const ocEnv = {
     ...process.env,
     ELECTRON_RUN_AS_NODE: '1',
