@@ -252,8 +252,11 @@ function openclawCandidates() {
     return [paths.openclawEmbeddedJs]
   }
   if (isWin) {
+    // v1.5.x dev 模式: 优先查内嵌 resources/openclaw/openclaw.mjs(与 packaged 一致),
+    // fallback 到全局 npm (v1.0-1.4 时代遗留, 兼容老开发机)。
     const appdata = process.env.APPDATA || path.join(home, 'AppData', 'Roaming')
     return [
+      paths.openclawEmbeddedJs,
       path.join(appdata, 'npm', 'openclaw.cmd'),
       path.join(appdata, 'npm', 'openclaw.exe'),
       'C:\\Program Files\\nodejs\\openclaw.cmd',
@@ -279,9 +282,14 @@ function hermesCandidates() {
     return [paths.hermesExe]
   }
   if (isWin) {
+    // v1.5.x dev 模式: 优先查内嵌 resources/hermes/venv/Scripts/hermes.exe,
+    // fallback 到旧路径(LOCALAPPDATA hermes-agent / 全局 npm)。
+    // 注: dev 模式直接用 resources 下的 venv 模板, packaged 才需要 userData copy。
     const localappdata = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local')
     const appdata = process.env.APPDATA || path.join(home, 'AppData', 'Roaming')
+    const embeddedDevHermes = path.join(paths.resourcesDir, 'hermes', 'venv', 'Scripts', 'hermes.exe')
     return [
+      embeddedDevHermes,
       path.join(localappdata, 'hermes', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe'),
       path.join(appdata, 'npm', 'hermes.cmd'),
       path.join(appdata, 'npm', 'hermes.exe'),
