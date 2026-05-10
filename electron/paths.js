@@ -13,10 +13,12 @@ export const projectRoot = isPackaged
   ? path.dirname(process.execPath)
   : path.join(__dirname, '..')
 
-// 资源目录: dev 是仓库根, packaged 是 安装目录\resources\
+// 资源目录: dev 是仓库根/resources/, packaged 是 安装目录\resources\
+// (v1.5.x 修复: dev 之前漏了 'resources' 子层, 导致 openclaw/hermes/python/node 内嵌路径全找不到.
+//  packaged 的 process.resourcesPath 自带 resources/, 所以 packaged 路径一直是对的.)
 export const resourcesDir = isPackaged
   ? process.resourcesPath
-  : path.join(__dirname, '..')
+  : path.join(__dirname, '..', 'resources')
 
 // 服务器代码所在目录:
 //   asar=true  时,server 在 process.resourcesPath/app.asar.unpacked/

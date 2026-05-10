@@ -383,17 +383,37 @@ async function ensureOpenClawRunning() {
   logMain(`[main] OpenClaw step 1/3: gateway install (注册 Scheduled Task)`)
   try {
     await new Promise((resolve) => {
+      // v1.5.x 真根因修复 #2: 必须 shell: true.
+      // OpenClaw 4.21 的 gateway install 需要 console handle (内部 schtasks 调用?),
+      // 直接 spawn electron.exe (windowsHide:true) 子进程无 console → 静默卡死.
+      // shell:true 让 cmd.exe 提供 console, install 才能正常输出 JSON 并退出.
+      // 实测: shell:false → 0 stdout 0 stderr 30s timeout; shell:true → 1 秒输出 ok JSON.
+      // shell:true 时 cmd 和 args 会被 Node 自动拼成命令行字符串.
       const p = spawn(cmd, installArgs, {
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
+        shell: true,
         env: ocEnv,
       })
-      p.stdout?.on('data', (d) => { try { openclawLogStream?.write(`[install] ${d}`) } catch {} })
+      let installOut = ''
+      p.stdout?.on('data', (d) => {
+        const s = d.toString('utf8')
+        installOut += s
+        try { openclawLogStream?.write(`[install] ${s}`) } catch {}
+      })
       p.stderr?.on('data', (d) => { try { openclawLogStream?.write(`[install-stderr] ${d}`) } catch {} })
-      const t = setTimeout(() => { try { p.kill() } catch {}; resolve(null) }, 15000)
+      const t = setTimeout(() => { try { p.kill() } catch {}; resolve(null) }, 30000)
       p.on('close', (code) => {
         clearTimeout(t)
-        logMain(`[main] gateway install 退出 code=${code}`)
+        logMain(`[main] gateway install 退出 code=${code}, stdout=${installOut.length}b`)
+        if (installOut) {
+          try {
+            const parsed = JSON.parse(installOut.trim())
+            logMain(`[main] gateway install JSON: ok=${parsed?.ok}, result=${parsed?.result}`)
+          } catch {
+            logMain(`[main] gateway install 输出非 JSON: ${installOut.slice(0, 200)}`)
+          }
+        }
         resolve(null)
       })
       p.on('error', (err) => {
