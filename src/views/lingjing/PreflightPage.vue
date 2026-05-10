@@ -8,6 +8,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { NButton, NSpace, useMessage } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
+import { evaluateConfigureStep } from './preflight/configureEval'
 
 const router = useRouter()
 const route = useRoute()
@@ -81,14 +82,16 @@ async function runStep(idx: number): Promise<boolean> {
         r = await bridge.preflight.startOpenClaw()
         break
       case 'configure': {
-        // configure 实际通过现有 autoConfigureViaMain 完成,失败记录详细信息
+        // v1.5.x 修复: 检查 cfg.bypass 而非 cfg.openclaw —— bypass=ok 才意味着
+        // lingjingApiToken 已注入 server 内存(chat.send 走的真实路径).
+        // 详见 docs/superpowers/specs/2026-05-10-preflight-timing-design.md 主因 Bug B.
         const modelId = (authStore as any).getSelectedModel?.() || 'gpt-5.4'
         const cfg = await bridge.autoConfigureViaMain?.({ modelId })
-        const ok = cfg?.openclaw === 'ok'
+        const evalResult = evaluateConfigureStep(cfg)
         r = {
-          ok,
+          ok: evalResult.ok,
           durationMs: 0,
-          message: ok ? '' : (cfg?.openclawMessage || cfg?.message || '配置失败'),
+          message: evalResult.message,
           detail: cfg,
         }
         break
