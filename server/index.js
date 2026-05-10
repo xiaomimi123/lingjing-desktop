@@ -497,26 +497,46 @@ async function handleChatSendBypass(req, res, params) {
 app.post('/api/lingjing/preflight-test-chat', async (req, res) => {
   const t0 = Date.now()
   try {
-    if (!gateway || gateway.ws?.readyState !== 1 /* OPEN */) {
+    // v1.5.x 修复: testChat 必须测 bypass 路径(chat.send 的真路径), 不是 OpenClaw daemon.
+    // 之前调 gateway.call('chat.send',{messages,stream,maxTokens}) 会被 daemon schema 拒
+    // (报"invalid chat.send params: must have required property...") — daemon 期望的格式
+    // 与 OpenAI 格式不同, 而 v1.5 chat 实际走 fetch aitoken.homes (绕过 daemon).
+    // 测 bypass = 验证 lingjingApiToken 有效 + aitoken.homes 可达 = 用户真发对话能不能跑.
+    if (!lingjingApiToken) {
       return res.json({
         ok: false,
         latencyMs: Date.now() - t0,
-        message: 'OpenClaw Gateway 未连接(WebSocket not OPEN)',
+        message: '灵境 token 未注入(server 内存空,需先走 configure 步骤)',
       })
     }
     const prompt = (req.body && req.body.prompt) || 'ping'
-    const result = await gateway.call('chat.send', {
-      messages: [{ role: 'user', content: prompt }],
-      stream: false,
-      maxTokens: 10,
-    }, 20000).catch((err) => ({ __error: err?.message || String(err) }))
-    if (result && result.__error) {
-      return res.json({ ok: false, latencyMs: Date.now() - t0, message: result.__error })
+    const upstream = await fetch(`${lingjingApiBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lingjingApiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-5.4',
+        messages: [{ role: 'user', content: prompt }],
+        stream: false,
+        max_tokens: 10,
+      }),
+    })
+    if (!upstream.ok) {
+      const text = await upstream.text().catch(() => '')
+      return res.json({
+        ok: false,
+        latencyMs: Date.now() - t0,
+        message: `bypass HTTP ${upstream.status}: ${text.slice(0, 200)}`,
+      })
     }
+    const data = await upstream.json().catch(() => null)
+    const reply = data?.choices?.[0]?.message?.content || ''
     return res.json({
       ok: true,
       latencyMs: Date.now() - t0,
-      response: typeof result === 'string' ? result.slice(0, 100) : '(non-string response)',
+      response: reply.slice(0, 100),
     })
   } catch (e) {
     return res.json({
