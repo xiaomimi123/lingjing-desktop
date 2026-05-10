@@ -705,27 +705,29 @@ app.post('/api/npm/update', async (req, res) => {
   try {
     const { version } = req.body
     const packageSpec = version ? `openclaw@${version}` : 'openclaw@latest'
-    
-    console.log(`[Server] Updating OpenClaw via npm: ${packageSpec}`)
-    
-    // 执行npm更新命令
-    const { execSync } = await import('child_process')
-    const output = execSync(`npm install -g ${packageSpec}`, {
+
+    // 优先用 main.js 注入的内嵌 npm.cmd(packaged 时不依赖系统 PATH);dev 兜底到系统 npm
+    const npmBin = process.env.LINGJING_NPM_CMD || 'npm'
+    console.log(`[Server] Updating OpenClaw via ${npmBin}: ${packageSpec}`)
+
+    const { execFileSync } = await import('child_process')
+    const output = execFileSync(npmBin, ['install', '-g', packageSpec], {
       encoding: 'utf8',
-      timeout: 120000 // 2分钟超时
+      timeout: 120000,
+      shell: true // .cmd 在 Win 上必须 shell:true 才能跑
     })
-    
+
     console.log('[Server] npm update output:', output)
-    
-    res.json({ 
-      ok: true, 
+
+    res.json({
+      ok: true,
       message: `Successfully updated to ${packageSpec}`,
       output: output
     })
   } catch (error) {
     console.error('[Server] Failed to update OpenClaw via npm:', error.message)
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: error.message,
       stdout: error.stdout,
       stderr: error.stderr

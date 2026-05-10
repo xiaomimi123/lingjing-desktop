@@ -134,6 +134,33 @@
           "!**/*.pyc",
           "!**/*.pyo"
         ]
+      },
+      {
+        "from": "resources/node",
+        "to": "node",
+        "filter": [
+          "**/*",
+          "!CHANGELOG.md",
+          "!README.md",
+          "!LICENSE",
+          "!install_tools.bat",
+          "!nodevars.bat",
+          "!corepack",
+          "!corepack.cmd",
+          "!npx",
+          "!npx.cmd",
+          "!node_modules/npm/docs/**",
+          "!node_modules/npm/man/**",
+          "!node_modules/npm/changelogs/**",
+          "!node_modules/npm/CHANGELOG*",
+          "!node_modules/npm/AUTHORS",
+          "!node_modules/npm/.mailmap",
+          "!node_modules/npm/.npmrc",
+          "!node_modules/npm/**/*.md",
+          "!node_modules/npm/**/test/**",
+          "!node_modules/npm/**/tests/**",
+          "!node_modules/npm/**/.github/**"
+        ]
       }
     ],
     "mac": {

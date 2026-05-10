@@ -60,6 +60,11 @@ export const hermesExe = path.join(hermesVenvUser, 'Scripts', 'hermes.exe')
 // Portable Python(hermes venv 的 base)
 export const pythonBaseDir = path.join(resourcesDir, 'python')
 
+// 内嵌 Node 20 LTS + npm(在线升级 openclaw 包用,不依赖系统 PATH)
+export const nodeBaseDir = path.join(resourcesDir, 'node')
+export const embeddedNodeBin = path.join(nodeBaseDir, 'node.exe')
+export const embeddedNpmCmd = path.join(nodeBaseDir, 'npm.cmd')
+
 // 启动时把可写目录都建出来
 export function ensureWritableDirs() {
   for (const d of [userData, dataDir, backupDir, mediaDir]) {
@@ -85,5 +90,8 @@ export function debugDump() {
     hermesVenvUser,
     hermesExe,
     pythonBaseDir,
+    nodeBaseDir,
+    embeddedNodeBin,
+    embeddedNpmCmd,
   }
 }

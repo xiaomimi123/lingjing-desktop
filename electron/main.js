@@ -171,6 +171,8 @@ async function startBackend() {
       LINGJING_HERMES_EXE: paths.hermesExe,
       LINGJING_HERMES_VENV: paths.hermesVenvUser,
       LINGJING_PYTHON_BASE: paths.pythonBaseDir,
+      LINGJING_NODE_BIN: paths.embeddedNodeBin,
+      LINGJING_NPM_CMD: paths.embeddedNpmCmd,
       // v1.2.3: 中文用户名路径下 Win cmd 默认 GBK 会让 Python/Node 子进程 stdio 乱码。
       // 强制 UTF-8 让 backend 派生的所有进程都用 UTF-8 编码。
       PYTHONIOENCODING: 'utf-8',

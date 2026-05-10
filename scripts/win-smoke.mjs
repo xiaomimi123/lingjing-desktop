@@ -52,6 +52,34 @@ add('embedded Hermes 就位 (resources/hermes/venv/Scripts/hermes.exe)', () => {
     : { ok: false, detail: `缺 ${bin}` }
 })
 
+add('embedded Node 就位 (resources/node/node.exe)', () => {
+  const bin = join(RES_ROOT, 'node', 'node.exe')
+  return existsSync(bin)
+    ? { ok: true, detail: bin }
+    : { ok: false, detail: `缺 ${bin}; portable Node 没解压` }
+})
+
+add('embedded npm 就位 (resources/node/npm.cmd)', () => {
+  const bin = join(RES_ROOT, 'node', 'npm.cmd')
+  return existsSync(bin)
+    ? { ok: true, detail: bin }
+    : { ok: false, detail: `缺 ${bin}` }
+})
+
+add('embedded Node --version 可执行', () => {
+  const bin = join(RES_ROOT, 'node', 'node.exe')
+  if (!existsSync(bin)) return { ok: false, detail: '二进制不存在, 跳过' }
+  try {
+    const out = execSync(`"${bin}" --version`, { encoding: 'utf8', timeout: 5000 }).trim()
+    return {
+      ok: /^v20\./.test(out),
+      detail: out,
+    }
+  } catch (e) {
+    return { ok: false, detail: e.message }
+  }
+})
+
 add('embedded Hermes --version 可执行 (15s 超时, 冷启可慢)', () => {
   const bin = join(RES_ROOT, 'hermes', 'venv', 'Scripts', 'hermes.exe')
   if (!existsSync(bin)) return { ok: false, detail: '二进制不存在, 跳过' }
