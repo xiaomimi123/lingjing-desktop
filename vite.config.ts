@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { readFileSync } from 'fs'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
@@ -59,6 +60,11 @@ export default defineConfig(({ mode }) => {
     define: {
       'import.meta.env.VITE_APP_TITLE': JSON.stringify(env.VITE_APP_TITLE || '灵境'),
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+    },
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
     },
   }
 })
