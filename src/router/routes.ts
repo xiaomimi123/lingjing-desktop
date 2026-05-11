@@ -172,6 +172,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { titleKey: 'routes.monitor', icon: 'PulseOutline', hidden: true },
       },
       {
+        path: 'hermes-embed-test',
+        name: 'HermesEmbedTest',
+        component: () => import('@/views/hermes/HermesEmbed.vue'),
+        meta: { title: 'Hermes iframe 试点', icon: 'TabletPortraitOutline', gateway: 'hermes', section: 'system', hidden: true },
+      },
+      {
         path: 'hermes',
         name: 'HermesDashboard',
         component: () => import('@/views/hermes/HermesDashboard.vue'),
