@@ -30,6 +30,7 @@
     "smoke:env": "node scripts/win-smoke.mjs",
     "smoke:full": "node --env-file-if-exists=.env.test scripts/smoke-full.mjs",
     "smoke:full:boot": "node --env-file-if-exists=.env.test scripts/smoke-full.mjs --boot",
+    "smoke:daemon-chat": "node --env-file-if-exists=.env.test scripts/smoke-daemon-chat.mjs",
     "publish:r2": "node scripts/publish-r2.mjs"
   },
   "build": {
