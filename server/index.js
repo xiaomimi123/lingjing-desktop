@@ -13,6 +13,7 @@ import checkDiskSpace from 'check-disk-space'
 import { execSync } from 'child_process'
 import pty from 'node-pty'
 import db, { createBackupRecord, updateBackupRecord, getBackupRecord, getBackupRecords, getBackupRecordsCount, deleteBackupRecord } from './database.js'
+import { injectLingjingSystemPrompt } from './preflight-helpers/systemPrompt.js'
 
 // ============================================================================
 // v1.5 路径 B: 灵境 chat 直接转发 aitoken.homes (绕过 OpenClaw daemon chat 引擎)
@@ -415,11 +416,14 @@ async function handleChatSendBypass(req, res, params) {
   ;(async () => {
     try {
       // 拼上下文 + 写 user message
+      // v1.5.2: 通过 helper 统一注入灵境身份 system prompt, 让模型自我认同灵境 AI.
       const history = getChatHistory(sessionKey)
-      const messages = [
+      const baseMessages = [
         ...history.map((h) => ({ role: h.role, content: h.content })),
         { role: 'user', content: messageText },
       ]
+      const injected = injectLingjingSystemPrompt({ messages: baseMessages })
+      const messages = injected.messages
       appendChatHistory(sessionKey, 'user', messageText)
 
       const upstream = await fetch(`${lingjingApiBaseUrl}/chat/completions`, {
