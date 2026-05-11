@@ -517,8 +517,22 @@ async function tryDaemonChatSend(req, res, params) {
     return { ok: false, reason: 'gateway-ws-not-open' }
   }
 
-  // 2. 注入 system prompt (与 bypass 一致)
-  const daemonParams = injectLingjingSystemPrompt(params || {})
+  // 2. 构造 OpenClaw 协议 chat.send params (additionalProperties:false, 不能多字段).
+  //    schema: { sessionKey, message, idempotencyKey, thinking?, deliver?, attachments?, timeoutMs?, ...}
+  //    注意: daemon 协议是单数 message + sessionKey 维护历史, 不是 OpenAI messages[] 数组!
+  //    身份 system prompt 通过 ~/.openclaw/workspace/BOOTSTRAP.md (agent 级配置), 不通过 chat.send.
+  const messageText = params?.message || params?.input || ''
+  const sessionKey = params?.sessionKey || params?.key || params?.session || 'default'
+  const daemonParams = {
+    sessionKey,
+    message: messageText,
+    idempotencyKey,
+  }
+  // 可选字段透传 (仅 schema 白名单, 避免 additionalProperties 拒)
+  if (params?.thinking) daemonParams.thinking = params.thinking
+  if (typeof params?.deliver === 'boolean') daemonParams.deliver = params.deliver
+  if (Array.isArray(params?.attachments)) daemonParams.attachments = params.attachments
+  if (typeof params?.timeoutMs === 'number') daemonParams.timeoutMs = params.timeoutMs
 
   try {
     // 3. 30s timeout 包装 daemon call
