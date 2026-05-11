@@ -90,6 +90,12 @@ function loadEnvConfig() {
 
 let envConfig = loadEnvConfig()
 
+// v1.6: chat 主路径切 daemon 的 feature flag.
+// '1' (默认) = daemon 优先, fallback bypass; '0' = 强制走 bypass 旧路径.
+// 出 daemon 问题时设 CHAT_DAEMON_ENABLED=0 立刻回退, 不需要重新打包.
+const CHAT_DAEMON_ENABLED = process.env.CHAT_DAEMON_ENABLED !== '0'
+console.log(`[server] CHAT_DAEMON_ENABLED=${CHAT_DAEMON_ENABLED ? '1 (daemon 优先)' : '0 (纯 bypass)'}`)
+
 // OpenClaw token 自动对齐: 优先从 ~/.openclaw/openclaw.json 读 gateway.auth.token,
 // 这样每台用户机器装好 OpenClaw 后,token 自动跟自己 OpenClaw 同步,无需手填 .env。
 // .env 的 OPENCLAW_AUTH_TOKEN 仅作 fallback。mac/Win/Linux 路径都是 ~/.openclaw/。
