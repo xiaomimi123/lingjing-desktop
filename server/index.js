@@ -1500,6 +1500,17 @@ app.post('/api/rpc', authMiddleware, async (req, res) => {
     if (!lingjingApiToken) {
       return res.json({ ok: false, error: { message: '灵境 token 未注入,请先登录' } })
     }
+    // v1.6: daemon 优先, fallback bypass.
+    // CHAT_DAEMON_ENABLED=0 跳过 daemon 直接走 bypass (紧急回滚).
+    if (CHAT_DAEMON_ENABLED) {
+      const daemonRes = await tryDaemonChatSend(req, res, params || {})
+      if (daemonRes.ok) {
+        // daemon 链路成功. daemon 已通过 SSE 推 chat.delta/chat.final.
+        // 这里 ack 前端 (chat.send 是 RPC, 前端等 ok=true 才转 'waiting').
+        return res.json({ ok: true, payload: { runId: daemonRes.idempotencyKey, lingjingDaemon: true } })
+      }
+      console.warn(`[chat] daemon 不可用, 回退 bypass: ${daemonRes.reason}`)
+    }
     return await handleChatSendBypass(req, res, params || {})
   }
 
