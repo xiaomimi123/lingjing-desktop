@@ -322,7 +322,27 @@ gateway.on('event', (event, payload) => {
   const streamHint = payload?.stream ? ` stream=${payload.stream}` : ''
   console.log(`[Gateway] event=${event}${stateHint}${phaseHint}${streamHint}`)
   debug('Gateway event:', event, 'payload keys:', payload ? Object.keys(payload) : null)
-  broadcastSSE({ type: 'event', event, payload })
+
+  // v1.6: daemon 推 "chat" event (单数), payload.state ∈ {'delta','final','error','aborted'}.
+  // 前端 chat.ts 监听 chat.delta/chat.final/chat.error/chat.aborted (与 v1.5 bypass 一致协议).
+  // 转发时根据 state 拆成对应 sub-event, 让前端无差别处理 daemon 与 bypass 两条路径.
+  if (event === 'chat' && payload?.state) {
+    const subEvent = `chat.${payload.state}` // chat.delta / chat.final / chat.error / chat.aborted
+    // bypass 协议 payload 用 {runId, key, content, ...}, daemon payload 用 {runId, sessionKey, message, ...}
+    // 桥接时补 'key' 字段(前端 chat.ts 用 key 找 session); content 从 message.content 提取
+    const bridgePayload = {
+      ...payload,
+      key: payload.sessionKey, // 前端字段名
+      content: typeof payload?.message === 'string'
+        ? payload.message
+        : Array.isArray(payload?.message?.content)
+          ? payload.message.content.map(p => p?.text || '').join('')
+          : '',
+    }
+    broadcastSSE({ type: 'event', event: subEvent, payload: bridgePayload })
+  } else {
+    broadcastSSE({ type: 'event', event, payload })
+  }
 })
 
 gateway.on('stateChange', (state) => {
