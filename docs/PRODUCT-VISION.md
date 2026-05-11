@@ -1,9 +1,15 @@
 # 灵境产品愿景 (PRODUCT-VISION)
 
 **Date**: 2026-05-10
-**Status**: v1 — Phase B brainstorming 综合
-**Source**: docs/UNDERSTANDING.md 18 题 Q&A + 用户 mirror 确认
+**Status**: v2 — 基于用户反馈修正核心商业逻辑（v1 把 bypass 当护城河误读了）
+**Source**: docs/UNDERSTANDING.md 18 题 Q&A + 用户 mirror 确认 + 2026-05-10 用户对 chat 体验的纠偏反馈
 **Purpose**: 所有技术决策（修什么、怎么修、什么时候修）必须能映射到本文档某条原则。
+
+> **v2 修订背景**: v1 把 "v1.5 bypass 路径" 写成商业护城河, 是错误推断。
+> 真相是: bypass 是 v1.3 OpenClaw daemon 在 packaged 环境保存 token 卡死时引入的临时绕道,
+> 它把灵境退化成了 LLM wrapper, 牺牲了产品差异化。
+> 用户原话: "我们的产品要具备 OpenClaw/Hermes 这两个智能体的能力, 而不是直接于我接入的大模型进行对话"。
+> 真正的护城河是 OpenClaw/Hermes Agent 能力, aitoken.homes 是计费渠道, 二者不冲突。
 
 ---
 
@@ -18,11 +24,13 @@
 | 维度 | 现状 |
 |---|---|
 | **核心产品** | 灵境桌面 (Win, Electron) |
-| **变现方式** | 卖 token / quota — 用户 chat 时通过 `api.aitoken.homes` 自动扣费 |
+| **核心价值** | **让用户用上 OpenClaw + Hermes 的智能体能力**(多智能体/自动化/技能/跨平台 IM) |
+| **变现方式** | 卖 token / quota — 用户用 Agent 能力时, LLM 调用经过 `api.aitoken.homes` 计费 |
 | **当前状态** | **已激活、已有真实收入** |
 | **未来增量** | 独特 skills 商城（v2.x，第一阶段免费保体验） |
 | **分销机制** | aitoken.homes 后端已实现（不在桌面端代码里），创客编号 + aff_code 已就位 |
-| **护城河** | bypass 路径 — chat 必经 aitoken.homes，计费 100% 可控 |
+| **护城河** | **OpenClaw + Hermes 智能体能力** (产品差异化) |
+| **计费渠道** | aitoken.homes (LLM Provider 端点, 不是产品定位) |
 
 ### 战略闭环（一图）
 
@@ -33,14 +41,19 @@ OpenClaw / Hermes 海外热度 (流量源)
         ↓
   灵境桌面 (零配置入口)
         ↓
-  用户登录 → 自动配 aitoken.homes Provider
+  用户登录 → 灵境 token 注入 OpenClaw daemon
         ↓
-   chat → bypass → api.aitoken.homes/v1
+  用户用 OpenClaw / Hermes Agent 能力 (多智能体/技能/自动化/IM 渠道)
+        ↓
+  daemon 内部 LLM 调用 → aitoken.homes (作为 OpenAI 兼容 Provider)
         ↓
      扣 quota → 现金流入
 ```
 
-**这意味着**：任何让 chat 走不通 aitoken.homes 的 bug，都是直接漏现金。
+**关键事实**:
+- **如果用户没感受到 OpenClaw/Hermes 能力, 等于灵境失去差异化** (退化成 LLM wrapper)
+- 计费在 daemon 内部 LLM 调用时发生 (aitoken.homes 端点), 不需要绕开 daemon
+- v1.5 bypass 路径是 v1.3 OpenClaw daemon auth 卡死时的临时妥协, **应该在 v1.6 退役**
 
 ---
 
@@ -149,11 +162,15 @@ OpenClaw / Hermes 海外热度 (流量源)
 
 | 红线 | 原因 |
 |---|---|
+| **不能让用户感受不到 OpenClaw/Hermes Agent 能力** | 这是真正的护城河;如果用户用着像普通 LLM, 灵境失去差异化 |
 | **不能做让现有付费用户跑不了 chat 的改动** | 直接漏现金 |
 | **不能拿用户当 CI**（v1.3 教训） | postmortem 已立明文 |
-| **不能脱离 aitoken.homes 计费链路** | 商业护城河 |
-| **不能在 chat 主路径上做实验性重构** | 走 bypass 已经稳定 1 个月 |
+| **chat 必须经过 aitoken.homes 完成 LLM 调用** | 计费渠道不能丢, 但实现路径可以变 (daemon 内部 fetch 也算) |
 | **不能在 v1.x 阶段做产品多元化** | 一个产品都没稳，不应分散注意力 |
+
+> **v1 红线 "不能脱离 aitoken.homes 计费链路 / 不能在 chat 主路径重构" 已删**:
+> 它们是基于 "bypass = 护城河" 的错误推断。真相是: 计费在哪条路径完成都行, 只要最终走 aitoken.homes。
+> chat 主路径 v1.6 必须重构(切回 daemon), 否则用户体验背离产品定位。
 
 ---
 
@@ -176,21 +193,27 @@ OpenClaw / Hermes 海外热度 (流量源)
 
 ## 8. 短期路线图（接下来 1-3 个月）
 
-### v1.5.2 — chat 修复版（**本周**）
-- spec / plan 已就绪：`docs/superpowers/specs/2026-05-10-preflight-timing-design.md`
-- 主修复：PreflightPage 第 4 步检查 `cfg.bypass`
-- 重发 GitHub Release，让付费用户能用
+### v1.5.2 — preflight 链路稳定化（**本周**, 已部分完成）
+- ✅ Task 1-3: vitest 配置 + helper TDD + PreflightPage 第 4 步检查 `cfg.bypass`
+- ✅ 4 个 dev 真根因修复: paths resourcesDir / candidates 内嵌 / install --force --json / spawn shell:true / testChat 走 bypass
+- 🔜 修问题 1 多个 cmd 窗口 (technical bug)
+- 🔜 重发 GitHub Release v1.5.2
+- ⚠️ **v1.5.2 仍走 bypass** (临时, 解决 chat 至少能跑); v1.6 真正修复架构
 
-### v1.6.0 — 稳定 + 兼容（**接下来 2-4 周**）
-- Bug 修复堆积清理
-- 加 `scripts/check-upstream.mjs` 上游监控
-- 加单元测试覆盖 server/index.js 关键路径
-- 修 UNDERSTANDING.md 提到的 5 个隐忧（chat 历史泄漏、SSE 流控、单测缺失等）
+### v1.6.0 — chat 切回 daemon (**核心战略版本**, 接下来 2-4 周)
+**目标**: 让用户在"对话"页面真正感受到 OpenClaw Agent 能力, 同时计费仍走 aitoken.homes
+- chat 主路径从 bypass → OpenClaw daemon (gateway WebSocket)
+- daemon 配置 aitoken.homes 作为 OpenAI 兼容 Provider, 解决 v1.3 OpenClaw onboard 在 packaged 卡死的真根因
+- 验证: 用户发消息 → 流式收到 → quota 真扣 → 模型自我认同灵境/OpenClaw 角色 → 可以触发 OpenClaw 的工具调用/技能
+- bypass 路径降级为 fallback (daemon 不可用时才走), v1.7 完全移除
+- **风险高, 必须先 brainstorm spec → 完整 plan → TDD 实施**, 不能直接动主路径代码
 
-### v1.7.0 — U 盘用户迁移 + macOS 启动（**1-3 个月内**）
-- 给 U 盘版用户做一键迁移工具（导入 ID / quota）
+### v1.7.0 — 稳定性 + bypass 退役 + 周边 (**1-3 个月内**)
+- 移除 bypass 代码 (v1.6 验证稳定后)
+- Bug 修复堆积清理 (UNDERSTANDING.md 5 个隐忧: chat 历史泄漏 / SSE 流控 / 单测缺失等)
+- 加 `scripts/check-upstream.mjs` OpenClaw/Hermes 上游监控
+- U 盘版用户迁移工具
 - macOS 重新激活
-- 启动用户引导（内置 onboarding tour）
 
 ### v2.0.0 — 商城 + 分销（**3-6 个月内**）
 - 技能商城激活变现路径（之前免费）
