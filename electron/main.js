@@ -348,6 +348,17 @@ if ($killed.Count -gt 0) { Write-Output ("killed: " + ($killed -join ',')) } els
  * 用「端口探测」找 OpenClaw 自己挑的实际端口,最长等 90s 推 splash 进度。
  */
 async function ensureOpenClawRunning() {
+  // v1.5.2 优化: 进入时先 detect, 如端口已稳定监听则跳过 cleanup+重启 (减少多窗口 + 提速).
+  // 旧逻辑 (v1.2.3): 无条件 cleanup 杀掉, 担心 v1.0.x 协议不兼容. 但 v1.5.x 起每次都是
+  // 同一版本 daemon, 重启反而会再弹 cmd 窗口 + schtasks 又触发. 检测端口稳定就复用.
+  const existingPort = await detectOpenClawPort().catch(() => null)
+  if (existingPort) {
+    logMain(`[main] OpenClaw 已在跑 ✓ 端口=${existingPort}, 跳过 cleanup+重启`)
+    detectedOpenClawPort = existingPort
+    sendLoadingStage(`OpenClaw 网关已就绪 (端口 ${existingPort})`)
+    return { status: 'started', port: existingPort, reused: true }
+  }
+
   // v1.2.3:强制清理旧 daemon,绝不复用("已在跑"的可能是 v1.0.x 留下的协议不兼容版)。
   await cleanupStaleOpenClawDaemons()
   detectedOpenClawPort = null
@@ -426,6 +437,10 @@ async function ensureOpenClawRunning() {
     logMain(`[main] gateway install 异常(继续尝试 start): ${e?.message || e}`)
   }
 
+  // v1.5.2: install 完成立刻同步 Hidden=true, 让 daemon 启动时不弹 console 窗口.
+  // (旧版异步 + "下次启动生效", 导致首次启动必弹一堆窗口).
+  await setOpenClawTaskHidden()
+
   // v1.3.3 关键修复:OpenClaw install 写 openclaw.json 时不会写 `gateway.mode` 字段,
   // 而 daemon 启动时安全检查必须看到 `gateway.mode`,缺了就报
   // "Gateway start blocked: existing config is missing gateway.mode"。
@@ -479,7 +494,7 @@ async function ensureOpenClawRunning() {
       detectedOpenClawPort = port
       logMain(`[main] OpenClaw Gateway 起来了 ✓ 端口=${port}`)
       sendLoadingStage(`OpenClaw 网关已就绪 (端口 ${port})`)
-      setOpenClawTaskHidden()
+      // v1.5.2: 不再这里调 setOpenClawTaskHidden, install 完成后已同步设置.
       return { status: 'started', port }
     }
     const elapsed = Math.floor((Date.now() - started) / 1000)
@@ -495,10 +510,11 @@ async function ensureOpenClawRunning() {
 
 /**
  * 把 OpenClaw 注册的 Windows Scheduled Task 改成 Hidden=true。
- * 触发时仍然启动 daemon,但不再弹 console 窗口(下次启动开始生效)。
- * 静默执行,失败不阻塞。
+ * v1.5.2: 改为同步 await, 在 install 完成后立刻调,
+ * 让首次启动 daemon 时就不再弹 console 窗口 (之前是"下次启动生效", 首次必弹).
+ * 静默执行,失败不阻塞 (返回 Promise<void>).
  */
-function setOpenClawTaskHidden() {
+async function setOpenClawTaskHidden() {
   if (!isWin) return
   const ps = `
     $names = @('OpenClaw Gateway (lingjing)','OpenClaw Gateway','openclaw-gateway-lingjing','openclaw-gateway','OpenClaw_Gateway','openclaw');
@@ -512,17 +528,21 @@ function setOpenClawTaskHidden() {
       } catch {}
     }
   `.trim()
-  try {
-    const proc = spawn('powershell', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true,
-    })
-    proc.unref()
-    logMain('[main] 异步设置 OpenClaw Scheduled Task Hidden=true (下次启动生效)')
-  } catch (e) {
-    logMain('[main] setOpenClawTaskHidden 失败(非致命): ' + (e?.message || e))
-  }
+  await new Promise((resolve) => {
+    try {
+      const proc = spawn('powershell', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], {
+        stdio: 'ignore',
+        windowsHide: true,
+      })
+      const t = setTimeout(() => { try { proc.kill() } catch {}; resolve() }, 8000)
+      proc.on('close', () => { clearTimeout(t); resolve() })
+      proc.on('error', (e) => { clearTimeout(t); logMain('[main] setOpenClawTaskHidden 错误(非致命): ' + (e?.message || e)); resolve() })
+    } catch (e) {
+      logMain('[main] setOpenClawTaskHidden spawn 失败(非致命): ' + (e?.message || e))
+      resolve()
+    }
+  })
+  logMain('[main] ✓ OpenClaw Scheduled Task Hidden=true 已同步生效 (首次 daemon 启动也不弹窗)')
 }
 
 /**
