@@ -231,11 +231,29 @@ function startDashboard() {
     dashboardStatus.pid = dashboardProcess.pid
     dashboardStatus.port = port
     dashboardStatus.error = null
-    
+
     // 清除旧的 Dashboard token 缓存，强制下次请求时获取新 token
     dashboardToken = null
     dashboardTokenExpiry = 0
     console.log('[Hermes] Dashboard token cache cleared')
+
+    // v1.6: 启动后异步轮询 token, 最多 30s
+    ;(async () => {
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 1000))
+        // 如果 dashboard 中途挂了, 提前退出
+        if (!dashboardProcess) {
+          console.warn('[hermes-embed] dashboard 进程已退出, 停止轮询 token')
+          return
+        }
+        const token = await fetchHermesTokenFromHTML()
+        if (token) {
+          setHermesEmbedToken(token)
+          return
+        }
+      }
+      console.warn('[hermes-embed] 30s 内未拿到 Hermes session token, iframe 可能未登录')
+    })()
 
     return { ok: true, pid: dashboardProcess.pid, port }
   } catch (err) {
@@ -1456,6 +1474,25 @@ let hermesEmbedToken = null
 export function setHermesEmbedToken(token) {
   hermesEmbedToken = token
   console.log(`[hermes-embed] token cached, suffix=...${(token || '').slice(-6)}`)
+}
+
+/**
+ * 从 Hermes dashboard HTML 抓取 window.__HERMES_SESSION_TOKEN__.
+ * Hermes 启动时把 token 直接写进 HTML <script>, fetch 一次 / 就能拿到.
+ * 由 startHermesDashboard() 启动成功后调用, 缓存到 hermesEmbedToken.
+ */
+async function fetchHermesTokenFromHTML() {
+  try {
+    const base = (hermesConfig?.webUrl || 'http://127.0.0.1:9119').replace(/\/+$/, '')
+    const r = await fetch(base + '/')
+    if (!r.ok) return null
+    const html = await r.text()
+    const m = html.match(/__HERMES_SESSION_TOKEN__\s*=\s*"([^"]+)"/)
+    return m?.[1] || null
+  } catch (e) {
+    console.warn('[hermes-embed] fetchHermesTokenFromHTML failed:', e?.message || e)
+    return null
+  }
 }
 
 router.use('/api/hermes/embed', async (req, res) => {
