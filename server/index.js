@@ -90,11 +90,13 @@ function loadEnvConfig() {
 
 let envConfig = loadEnvConfig()
 
-// v1.6: chat 主路径切 daemon 的 feature flag.
-// '1' (默认) = daemon 优先, fallback bypass; '0' = 强制走 bypass 旧路径.
-// 出 daemon 问题时设 CHAT_DAEMON_ENABLED=0 立刻回退, 不需要重新打包.
-const CHAT_DAEMON_ENABLED = process.env.CHAT_DAEMON_ENABLED !== '0'
-console.log(`[server] CHAT_DAEMON_ENABLED=${CHAT_DAEMON_ENABLED ? '1 (daemon 优先)' : '0 (纯 bypass)'}`)
+// v1.6: chat 主路径切 daemon 的 feature flag (alpha, 默认关).
+// '0' (默认) = 走 v1.5.2 bypass 稳定路径; '1' = 显式启用 v1.6 daemon (实验/调研用).
+// v1.6 alpha 暂停原因: 发现 daemon 协议有 3+ 层差异 (schema/event name/sessionKey 映射),
+// session/runId 双向映射 + BOOTSTRAP.md 身份注入 + 可能的工具调用桥接 都未完成.
+// 见 docs/ARCHITECTURE-OPTIONS.md (待写) 评估是否切回继续 daemon 路径或换架构.
+const CHAT_DAEMON_ENABLED = process.env.CHAT_DAEMON_ENABLED === '1'
+console.log(`[server] CHAT_DAEMON_ENABLED=${CHAT_DAEMON_ENABLED ? '1 (daemon 实验)' : '0 (bypass 稳定, 默认)'}`)
 
 // OpenClaw token 自动对齐: 优先从 ~/.openclaw/openclaw.json 读 gateway.auth.token,
 // 这样每台用户机器装好 OpenClaw 后,token 自动跟自己 OpenClaw 同步,无需手填 .env。
