@@ -1445,4 +1445,67 @@ router.get('/api/hermes/health', async (req, res) => {
   }
 })
 
+/**
+ * v1.6: Hermes UI iframe 反向代理.
+ * /api/hermes/embed/<path>  →  http://127.0.0.1:9119/<path>
+ * - HTML 响应拦截, 替换 window.__HERMES_SESSION_TOKEN__ 注入灵境侧 token
+ * - 静态资源 (JS/CSS/字体/图片) 透传 stream pipe
+ * - 不要求 auth middleware (iframe 内由 Hermes token 自己处理)
+ */
+let hermesEmbedToken = null
+export function setHermesEmbedToken(token) {
+  hermesEmbedToken = token
+  console.log(`[hermes-embed] token cached, suffix=...${(token || '').slice(-6)}`)
+}
+
+router.use('/api/hermes/embed', async (req, res) => {
+  try {
+    const base = (hermesConfig?.webUrl || 'http://127.0.0.1:9119').replace(/\/+$/, '')
+    const upstreamUrl = base + (req.url || '/')
+
+    const fetchOpts = {
+      method: req.method,
+      headers: { ...req.headers, host: new URL(base).host },
+      redirect: 'manual',
+    }
+    if (!['GET', 'HEAD'].includes(req.method)) {
+      fetchOpts.body = req
+      fetchOpts.duplex = 'half'
+    }
+
+    const upstream = await fetch(upstreamUrl, fetchOpts)
+
+    res.status(upstream.status)
+    upstream.headers.forEach((value, key) => {
+      // 跳过可能阻 iframe 的头 (Hermes 默认没设, 但保险)
+      if (/^(x-frame-options|content-security-policy|content-length|transfer-encoding|connection)$/i.test(key)) {
+        return
+      }
+      res.setHeader(key, value)
+    })
+
+    const contentType = upstream.headers.get('content-type') || ''
+    if (contentType.includes('text/html')) {
+      let html = await upstream.text()
+      // 替换 token (即使 hermesEmbedToken 为空也替换, 让 iframe 至少不 stale)
+      html = html.replace(
+        /window\.__HERMES_SESSION_TOKEN__\s*=\s*"[^"]*"/,
+        `window.__HERMES_SESSION_TOKEN__="${hermesEmbedToken || ''}"`,
+      )
+      res.send(html)
+    } else {
+      // 二进制/JS/CSS/字体 透传
+      if (upstream.body) {
+        const { Readable } = await import('node:stream')
+        Readable.fromWeb(upstream.body).pipe(res)
+      } else {
+        res.end()
+      }
+    }
+  } catch (e) {
+    console.error('[hermes-embed] proxy error:', e?.message || e)
+    res.status(503).send(`Hermes 服务未启动或不可达: ${e?.message || e}`)
+  }
+})
+
 export default router
