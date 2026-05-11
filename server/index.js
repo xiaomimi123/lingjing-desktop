@@ -501,6 +501,41 @@ async function handleChatSendBypass(req, res, params) {
 }
 
 /**
+ * v1.6 chat 主路径: 通过 daemon WebSocket 调 chat.send.
+ * daemon 内部用 aitoken.homes 作 OpenAI Provider 完成 LLM 调用.
+ * 流式响应通过现有 daemon→server SSE 事件桥接到前端 (broadcastSSE 已有).
+ *
+ * 注: 本函数不调 res.json, 调用方负责管理 res (统一 ack 顺序).
+ *
+ * @returns {Promise<{ok:true, viaDaemon:true, idempotencyKey:string, payload:any}|{ok:false, reason:string}>}
+ */
+async function tryDaemonChatSend(req, res, params) {
+  const idempotencyKey = params?.idempotencyKey || `daemon-${Date.now()}`
+
+  // 1. WebSocket 不通 → 立刻 fail, 不浪费时间
+  if (!gateway || gateway.ws?.readyState !== 1 /* OPEN */) {
+    return { ok: false, reason: 'gateway-ws-not-open' }
+  }
+
+  // 2. 注入 system prompt (与 bypass 一致)
+  const daemonParams = injectLingjingSystemPrompt(params || {})
+
+  try {
+    // 3. 30s timeout 包装 daemon call
+    const result = await Promise.race([
+      gateway.call('chat.send', daemonParams),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('daemon-timeout-30s')), 30000)),
+    ])
+    console.log(`[chat-daemon] ok runId=${idempotencyKey}`)
+    return { ok: true, viaDaemon: true, idempotencyKey, payload: result }
+  } catch (e) {
+    const reason = e?.message || String(e)
+    console.warn(`[chat-daemon] failed (runId=${idempotencyKey}): ${reason}`)
+    return { ok: false, reason }
+  }
+}
+
+/**
  * v1.3.0 自检端点:发一条 minimal chat 请求测试整条链路。
  * 主进程 preflight-test-chat IPC 调本端点,20s 超时(留 10s 给 IPC 自己的 30s 超时余量)。
  */
